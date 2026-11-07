@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Tischtennis Bilanz</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --card: #ffffff; --text: #1d1d1b; --muted: #6b6a65;
+    --line: #e2e0d8; --accent: #1d6f5a; --win: #2f7d32; --loss: #b23a2a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a18; --card: #242422; --text: #ecebe6; --muted: #a3a29b;
+      --line: #3a3936; --accent: #5dcaa5; --win: #8bc98e; --loss: #f0997b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 560px; margin: 0 auto; padding: 24px 16px 48px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0; }
+  button {
+    font: inherit; font-size: 15px; padding: 10px 16px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--accent); background: var(--accent); color: var(--bg);
+  }
+  button.secondary { background: transparent; color: var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .msg { color: var(--muted); }
+  .msg.error { color: var(--loss); }
+  .user { font-size: 13px; color: var(--muted); margin: -8px 0 16px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 10px 6px; text-align: right; border-bottom: 1px solid var(--line); }
+  th:first-child, td:first-child { text-align: left; }
+  th { font-size: 13px; font-weight: 500; color: var(--muted); }
+  tr:last-child td { border-bottom: none; }
+  td.w { color: var(--win); font-variant-numeric: tabular-nums; }
+  td.l { color: var(--loss); font-variant-numeric: tabular-nums; }
+  td.q { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .foot { font-size: 13px; color: var(--muted); margin-top: 12px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Tischtennis Bilanz</h1>
+    <div>
+      <button id="btn-login" disabled>Anmelden</button>
+      <button id="btn-logout" class="secondary" hidden>Abmelden</button>
+    </div>
+  </header>
+
+  <p id="user" class="user" hidden></p>
+
+  <div class="card">
+    <p id="msg" class="msg">Bitte mit einem freigegebenen Google-Konto anmelden.</p>
+    <table id="table" hidden>
+      <thead><tr><th>Spieler</th><th>Siege</th><th>Niederlagen</th><th>Quote</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+  <p id="foot" class="foot" hidden></p>
+</main>
+
+<script>
+// ╔══════════════════════════ FILL IN ═══════════════════════════╗
+const CONFIG = {
+  // >>> FILL IN: OAuth client ID from Google Cloud Console (ends in .apps.googleusercontent.com)
+  CLIENT_ID: '975581090195-pgfv9ptq40fkp728151hqpru116pg732.apps.googleusercontent.com',
+
+  // >>> FILL IN: the same spreadsheet ID as in Code.gs
+  SPREADSHEET_ID: '1zdOvoRee2icshaSQLdiTZmFX8YebBgEtNUZ7wPRa5do',
+
+  // >>> CHECK: tab with the match results and its column headers (must match the form questions)
+  SHEET_SPIELE: 'Spiele',
+  WINNER_COLS: ['Sieger', 'Sieger 1', 'Sieger 2'],
+  LOSER_COLS:  ['Verlierer', 'Verlierer 1', 'Verlierer 2'],
+};
+// ╚══════════════════════════════════════════════════════════════╝
+
+const SCOPE = 'https://www.googleapis.com/auth/spreadsheets.readonly';
+const STORE_KEY = 'tt_token';
+const $ = id => document.getElementById(id);
+let tokenClient = null;
+let accessToken = null;
+
+// ───────── Stats: pure function, no Google involved ─────────
+// rows: 2D array from the Sheets API, first row = headers
+function computeStats(rows) {
+  if (!rows || rows.length < 2) return { players: [], matches: 0, skipped: 0 };
+  const headers = rows[0].map(h => String(h).trim());
+  const idx = cols => cols.map(c => headers.indexOf(c)).filter(i => i !== -1);
+  const wIdx = idx(CONFIG.WINNER_COLS), lIdx = idx(CONFIG.LOSER_COLS);
+  if (!wIdx.length || !lIdx.length) {
+    throw new Error(`Spalten nicht gefunden. Erwartet z. B. „${CONFIG.WINNER_COLS[0]}" und „${CONFIG.LOSER_COLS[0]}" in Zeile 1 von „${CONFIG.SHEET_SPIELE}".`);
+  }
+  const stats = new Map();
+  const get = name => stats.get(name) || stats.set(name, { name, w: 0, l: 0 }).get(name);
+  let matches = 0, skipped = 0;
+
+  for (const row of rows.slice(1)) {
+    const pick = ids => ids.map(i => String(row[i] ?? '').trim()).filter(Boolean);
+    const winners = pick(wIdx), losers = pick(lIdx);
+    if (!winners.length || !losers.length) continue;                 // empty / incomplete row
+    const all = [...winners, ...losers];
+    if (new Set(all).size !== all.length) { skipped++; continue; }   // same person twice → invalid
+    winners.forEach(n => get(n).w++);
+    losers.forEach(n => get(n).l++);
+    matches++;
+  }
+  const players = [...stats.values()].sort((a, b) =>
+    b.w - a.w || a.l - b.l || a.name.localeCompare(b.name, 'de'));
+  return { players, matches, skipped };
+}
+
+// ───────── Rendering ─────────
+function showMsg(text, isError = false) {
+  $('msg').textContent = text;
+  $('msg').className = 'msg' + (isError ? ' error' : '');
+  $('msg').hidden = false;
+  $('table').hidden = true;
+  $('foot').hidden = true;
+}
+
+function render({ players, matches, skipped }) {
+  if (!players.length) { showMsg('Noch keine Spiele eingetragen.'); return; }
+  const tbody = $('tbody');
+  tbody.replaceChildren(...players.map(p => {
+    const tr = document.createElement('tr');
+    const quote = Math.round(100 * p.w / (p.w + p.l)) + ' %';
+    [[p.name, ''], [p.w, 'w'], [p.l, 'l'], [quote, 'q']].forEach(([v, cls]) => {
+      const td = document.createElement('td');
+      td.textContent = v;            // textContent, never innerHTML: names come from user input
+      if (cls) td.className = cls;
+      tr.appendChild(td);
+    });
+    return tr;
+  }));
+  $('msg').hidden = true;
+  $('table').hidden = false;
+  $('foot').textContent = `${matches} Spiele ausgewertet` +
+    (skipped ? ` · ${skipped} ungültige übersprungen (gleiche Person zweimal)` : '');
+  $('foot').hidden = false;
+}
+
+// ───────── Google sign-in + Sheets API ─────────
+function initGoogle() {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CONFIG.CLIENT_ID,
+    scope: SCOPE,
+    callback: onToken,
+    error_callback: err => {
+      if (err && err.type === 'popup_closed') showMsg('Anmeldung abgebrochen.');
+      else showMsg('Anmeldung fehlgeschlagen: ' + (err && err.type || 'unbekannt'), true);
+    },
+  });
+  $('btn-login').disabled = false;
+
+  const saved = loadToken();          // reuse a still-valid token after page reload
+  if (saved) { accessToken = saved; signedIn(); loadData(); }
+}
+
+function onToken(resp) {
+  if (resp.error) { showMsg('Anmeldung fehlgeschlagen: ' + resp.error, true); return; }
+  if (!google.accounts.oauth2.hasGrantedAllScopes(resp, SCOPE)) {
+    showMsg('Bitte beim Anmelden den Zugriff auf Google Tabellen erlauben (Häkchen setzen).', true);
+    return;
+  }
+  accessToken = resp.access_token;
+  saveToken(resp.access_token, resp.expires_in);
+  signedIn();
+  loadData();
+}
+
+async function loadData() {
+  showMsg('Lade Daten …');
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(CONFIG.SPREADSHEET_ID)}` +
+              `/values/${encodeURIComponent(CONFIG.SHEET_SPIELE)}`;
+  try {
+    const res = await fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } });
+    if (res.status === 401) { clearToken(); signedOut(); showMsg('Sitzung abgelaufen – bitte neu anmelden.'); return; }
+    if (res.status === 403) { showMsg('Kein Zugriff: Dieses Google-Konto ist für die Daten nicht freigegeben.', true); return; }
+    if (res.status === 404) { showMsg('Tabelle nicht gefunden – SPREADSHEET_ID prüfen.', true); return; }
+    if (res.status === 400) { showMsg(`Tab „${CONFIG.SHEET_SPIELE}" nicht gefunden – SHEET_SPIELE prüfen.`, true); return; }
+    if (!res.ok) { showMsg('Fehler beim Laden (' + res.status + ').', true); return; }
+    const data = await res.json();
+    render(computeStats(data.values));
+  } catch (e) {
+    showMsg(e.message || 'Netzwerkfehler.', true);
+  }
+}
+
+async function showUserEmail() {
+  // Optional nicety: show which account is signed in. Needs no extra scope beyond the token's own info.
+  try {
+    const r = await fetch('https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=' + encodeURIComponent(accessToken));
+    const info = await r.json();
+    if (info.email) { $('user').textContent = 'Angemeldet als ' + info.email; $('user').hidden = false; }
+  } catch (_) {}
+}
+
+function signedIn()  { $('btn-login').hidden = true; $('btn-logout').hidden = false; showUserEmail(); }
+function signedOut() { $('btn-login').hidden = false; $('btn-logout').hidden = true; $('user').hidden = true; }
+
+$('btn-login').onclick = () => tokenClient.requestAccessToken({ prompt: '' });
+$('btn-logout').onclick = () => {
+  if (accessToken) google.accounts.oauth2.revoke(accessToken, () => {});
+  accessToken = null; clearToken(); signedOut();
+  showMsg('Abgemeldet.');
+};
+
+// Token survives a reload within the same tab (sessionStorage), never longer than Google's ~1 h.
+function saveToken(t, expiresIn) {
+  try { sessionStorage.setItem(STORE_KEY, JSON.stringify({ t, exp: Date.now() + (expiresIn - 60) * 1000 })); } catch (_) {}
+}
+function loadToken() {
+  try {
+    const s = JSON.parse(sessionStorage.getItem(STORE_KEY) || 'null');
+    return s && s.exp > Date.now() ? s.t : null;
+  } catch (_) { return null; }
+}
+function clearToken() { try { sessionStorage.removeItem(STORE_KEY); } catch (_) {} }
+</script>
+<script src="https://accounts.google.com/gsi/client" async defer onload="initGoogle()"></script>
+</body>
+</html>

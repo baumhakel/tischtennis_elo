@@ -1,0 +1,28 @@
+// View registry. `nav` = shown in the bottom bar; every view is listed under "Mehr".
+// Views are loaded on first use (dynamic import), so the first screen only loads what it needs.
+
+export const VIEWS = [
+  { id: 'dashboard',   title: 'Übersicht',        nav: true,  load: () => import('./dashboard.js') },
+  { id: 'history',     title: 'Verlauf',          nav: true,  load: () => import('./history.js') },
+  { id: 'matrix',      title: 'Matrix',           nav: true,  load: () => import('./matrix.js') },
+  { id: 'records',     title: 'Rekorde',          nav: true,  load: () => import('./records.js') },
+  { id: 'rank',        title: 'Rangverlauf',                  load: () => import('./rank.js') },
+  { id: 'movement',    title: 'Elo-Bewegung',                 load: () => import('./movement.js') },
+  { id: 'upsets',      title: 'Überraschungen',               load: () => import('./upsets.js') },
+  { id: 'activity',    title: 'Aktivität',                    load: () => import('./activity.js') },
+  { id: 'player',      title: 'Spielerprofil',                load: () => import('./player.js') },
+  { id: 'h2h',         title: 'Direktvergleich',              load: () => import('./h2h.js') },
+  { id: 'partners',    title: 'Doppelpartner',                load: () => import('./partners.js') },
+  { id: 'calibration', title: 'Kalibrierung',                 load: () => import('./calibration.js') },
+  { id: 'data',        title: 'Daten und Hinweise',           load: () => import('./data.js') },
+  { id: 'more',        title: 'Mehr',             nav: true,  load: () => import('./more.js') },
+];
+
+export const viewById = id => VIEWS.find(v => v.id === id);
+
+/** Module for a view; views without `load` get the placeholder. */
+export async function loadView(def) {
+  if (def.load) return (await def.load()).default;
+  const { placeholder } = await import('./placeholder.js');
+  return placeholder(def);
+}

@@ -173,3 +173,42 @@ test('performance: ~1900 games well under 100 ms', () => {
   console.log(`achievements: ${d.games.length} games, ${ms.toFixed(1)} ms, ${[...A.players.values()].reduce((s, p) => s + p.earned.length, 0)} earned`);
   assert.ok(ms < 100);
 });
+
+// ── „Was fehlt“ (views/badge-hints.js) ──
+import { hintsFor } from '../js/views/badge-hints.js';
+const env = r => ({
+  nameOf: id => r.d.players.get(id).name,
+  ratingOf: id => r.elo.final[r.elo.index.get(id)],
+  isActive: () => true,
+  activeIds: r.elo.ids.slice(),
+});
+const hint = (r, badge, name) => hintsFor(r.d.config, r.A, badge, `p${NAMES.indexOf(name) + 1}`, env(r));
+
+test('Was fehlt: Gegnerjäger lists not beaten and never played', () => {
+  const r = run([[at(0, 9), ['A'], ['B']], [at(0, 10), ['C'], ['A']], [at(0, 11), ['D'], ['E']]]);
+  const g = Object.fromEntries(hint(r, 'opponents', 'A').groups.map(x => [x.title, x.rows.map(y => y.id)]));
+  assert.deepEqual(g['Noch nicht besiegt'], ['p3']);
+  assert.deepEqual(g['Noch nie gegeneinander gespielt'], ['p4', 'p5']);   // F never played: not listed
+  assert.deepEqual(g['Schon besiegt'], ['p2']);
+});
+
+test('Was fehlt: Ausgeglichen counts wins in a row incl. the minimum number of singles', () => {
+  const r = run([[at(0, 9), ['A'], ['B']], [at(0, 10), ['B'], ['A']], [at(0, 11), ['B'], ['A']]], { h2h_min_games: 5 });
+  const row = hint(r, 'balanced', 'A').groups[0].rows.find(x => x.id === 'p2');
+  assert.match(row.text, /1 : 2 · 2 Siege fehlen/);    // 3 : 2 after two more wins, then 5 singles
+});
+
+test('Was fehlt: Abo, Revanche, Jeden fünfmal follow the results', () => {
+  const r = run([[at(0, 9), ['A'], ['B']], [at(0, 10), ['A'], ['B']], [at(0, 11), ['C'], ['A']]]);
+  const abo = hint(r, 'subscription', 'A');
+  assert.equal(abo.groups[0].rows[0].id, 'p2'); assert.match(abo.groups[0].rows[0].text, /^2 von/);
+  assert.deepEqual(hint(r, 'revenge', 'A').groups[0].rows.map(x => x.id), ['p3']);
+  const each = hint(r, 'each_five', 'A').groups.find(x => x.title.startsWith('Zählen noch nicht'));
+  assert.deepEqual(each.rows.map(x => x.id), ['p2', 'p3']);
+});
+
+test('Was fehlt: nothing for pure counts or finished badges', () => {
+  const r = run([[at(0, 9), ['A'], ['B']]], { achievement_games_levels: [1] });
+  assert.equal(hint(r, 'games', 'A'), null);
+  assert.equal(hint(r, 'days', 'B'), null);
+});

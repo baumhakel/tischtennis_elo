@@ -1,6 +1,6 @@
 // Static app constants. No side effects: safe to import from core/ (browser, worker, Node).
 
-export const APP_VERSION = '2.0.0-dev.7';   // bump to invalidate the browser cache
+export const APP_VERSION = '2.0.0-dev.8';   // bump to invalidate the browser cache
 
 // >>> FILL IN: OAuth client ID (ends in .apps.googleusercontent.com)
 export const CLIENT_ID = '975581090195-pgfv9ptq40fkp728151hqpru116pg732.apps.googleusercontent.com';

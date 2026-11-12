@@ -6,6 +6,7 @@ import { h, render } from '../ui/dom.js';
 import * as fmt from '../ui/format.js';
 import { viewHead, plainTable, tableView, linkTo } from './common.js';
 import { medal } from '../ui/medal.js';
+import { hintsFor } from './badge-hints.js';
 import { DEFS, ORDER, CATEGORIES, SCOPE, tierName, badgeLabel, badgeHasLevels, progressOf, badgeStats, earnedCount, totalLevels, noteOf } from './badge-defs.js';
 
 export default {
@@ -23,7 +24,7 @@ const RULE = 'Ein Abzeichen gibt es in dem Moment, in dem die Bedingung zum erst
 function page(ctx) {
   const A = ctx.badges;
   if (!A) return [viewHead('Abzeichen'), h('p', { class: 'empty' }, 'Abzeichen werden berechnet …')];
-  if (ctx.params.id && DEFS[ctx.params.id]) return detail(ctx, A, ctx.params.id);
+  if (ctx.params.id && DEFS[ctx.params.id]) return detail(ctx, A, ctx.params.id, A.players.has(ctx.params.spieler) ? ctx.params.spieler : null);
   if (ctx.params.spieler && A.players.has(ctx.params.spieler)) return collection(ctx, A, ctx.params.spieler);
   return catalogue(ctx, A);
 }
@@ -81,10 +82,12 @@ export function nextGoals(cfg, A, p, n = 3) {
     .slice(0, n);
 }
 
-export function goalRow(ctx, A, b, pr) {
+/** Progress towards the next level; links to the badge page for that player (spieler = false: no link). */
+export function goalRow(ctx, A, b, pr, spieler = null) {
   const cfg = ctx.baseModel.dataset.config;
   const target = badgeHasLevels(b) ? `${tierName(cfg, pr.level + 1)}: ${condText(A, cfg, b, pr.level)}` : condText(A, cfg, b, 0);
-  return h('a', { class: 'goal tap', ...badgeLink(ctx, b) },
+  const wrap = spieler === false ? ['div', { class: 'goal' }] : ['a', { class: 'goal tap', ...linkTo(ctx, 'abzeichen', spieler ? { id: b, spieler } : { id: b }) }];
+  return h(wrap[0], wrap[1],
     badgeMedal(cfg, b, pr.level, 36),
     h('span', { class: 'goal-text' },
       h('span', { class: 'goal-name' }, DEFS[b].name),
@@ -142,7 +145,7 @@ function catalogue(ctx, A) {
 
 // ───────── one badge ─────────
 
-function detail(ctx, A, b) {
+function detail(ctx, A, b, who) {
   const cfg = ctx.baseModel.dataset.config;
   const def = DEFS[b], L = A.levels[b];
   const s = badgeStats(A, b);
@@ -165,16 +168,21 @@ function detail(ctx, A, b) {
       ' ', h('a', { ...linkTo(ctx, 'ruhmeshalle') }, 'Alle in der Ruhmeshalle'));
   }
 
-  const myPr = me ? progressOf(cfg, A.levels, b, me) : null;
-  const mine = me ? h('div', { class: 'mine' },
-    h('h3', { class: 'sec' }, 'Du'),
-    myPr.ratio >= 1 ? h('p', {}, badgeHasLevels(b) ? `Alle Stufen geschafft.` : 'Hast du.')
-      : myPr.text ? h('ul', { class: 'goal-list' }, h('li', {}, goalRow(ctx, A, b, myPr)))
-        : h('p', { class: 'muted' }, myPr.level ? `Du hast ${tierName(cfg, myPr.level)}.` : 'Noch nicht.')) : null;
+  // one player's progress: the one in the URL (?spieler=), else „Ich“
+  const subj = who || (me ? ctx.me.id : null);
+  const sp = subj && A.players.get(subj);
+  const isMe = subj === ctx.me?.id;
+  const pr = sp ? progressOf(cfg, A.levels, b, sp) : null;
+  const mine = sp ? h('div', { class: 'mine' },
+    h('h3', { class: 'sec' }, isMe ? 'Du' : nameOfId(ctx, subj)),
+    pr.ratio >= 1 ? h('p', {}, badgeHasLevels(b) ? 'Alle Stufen geschafft.' : 'Geschafft.')
+      : pr.text ? h('ul', { class: 'goal-list' }, h('li', {}, goalRow(ctx, A, b, pr, false)))
+        : h('p', { class: 'muted' }, pr.level ? `Erreicht: ${tierName(cfg, pr.level)}.` : 'Noch nicht geschafft.'),
+    hintsBlock(ctx, A, b, subj)) : null;
 
   // who comes closest (not complete yet, some progress)
   const close = def.unit ? [...A.players.entries()]
-    .filter(([id]) => id !== ctx.me?.id)
+    .filter(([id]) => id !== subj)
     .map(([id, p]) => ({ id, pr: progressOf(cfg, A.levels, b, p) }))
     .filter(x => x.pr.ratio > 0 && x.pr.ratio < 1)
     .sort((x, y) => y.pr.ratio - x.pr.ratio).slice(0, 5) : [];
@@ -192,12 +200,59 @@ function detail(ctx, A, b) {
           [2], s.holders.map(x => collectionLink(ctx, x.id)))
       : h('p', { class: 'empty' }, 'Noch hat es niemand geschafft.'),
     close.length ? [h('h3', { class: 'sec' }, 'Am nächsten dran'),
-      h('ul', { class: 'goal-list' }, close.map(x => h('li', {}, h('a', { class: 'goal tap', ...collectionLink(ctx, x.id) },
+      h('ul', { class: 'goal-list' }, close.map(x => h('li', {}, h('a', { class: 'goal tap', ...linkTo(ctx, 'abzeichen', { id: b, spieler: x.id }) },
         h('span', { class: 'goal-text' },
           h('span', { class: 'goal-name' }, nameOfId(ctx, x.id)),
           bar(x.pr.ratio),
           h('span', { class: 'goal-sub' }, x.pr.text))))))] : null,
   ];
+}
+
+/** Abzeichen of 2 or 4 players side by side (Direktvergleich). Differences first, all of them folded. */
+export function badgeCompare(ctx, ids) {
+  const A = ctx.badges;
+  const head = h('h2', {}, 'Abzeichen');
+  if (!A) return [head, h('p', { class: 'muted' }, 'Werden berechnet …')];
+  const cfg = ctx.baseModel.dataset.config;
+  const P = ids.map(id => A.players.get(id) || { level: {}, earned: [] });
+  const cols = ['', ...ids.map(id => nameOfId(ctx, id))];
+  const cell = (b, p) => {
+    const lv = p.level[b] || 0;
+    return h('span', { class: 'cmp-cell' }, badgeMedal(cfg, b, lv, 30, lv ? badgeLabel(cfg, b, lv) : 'noch nicht'),
+      badgeHasLevels(b) && lv ? h('span', { class: 'cmp-lv' }, String(lv)) : null);
+  };
+  const rowsFor = list => list.map(b => [DEFS[b].name, ...P.map(p => cell(b, p))]);
+  const differ = ORDER.filter(b => new Set(P.map(p => p.level[b] || 0)).size > 1);
+  const total = totalLevels(A);
+  const table = list => h('div', { class: 'cmp' }, plainTable(cols, [[`Stufen (von ${total})`, ...P.map(p => String(earnedCount(p)))], ...rowsFor(list)], [],
+    [linkTo(ctx, 'abzeichen'), ...list.map(b => linkTo(ctx, 'abzeichen', { id: b }))]));
+  return [head,
+    h('p', { class: 'muted' }, 'Gezählt über alle Spiele. Die Zahl neben der Medaille ist die Stufe.'),
+    differ.length ? table(differ) : h('p', {}, 'Bei den Abzeichen sind alle gleichauf.'),
+    h('details', { class: 'hints' }, h('summary', {}, `Alle ${ORDER.length} Abzeichen`), table(ORDER))];
+}
+
+/** „Was fehlt noch?“: folded, so the page stays short. Opponents → Direktvergleich, partners → Team. */
+function hintsBlock(ctx, A, b, id) {
+  const cfg = ctx.baseModel.dataset.config;
+  const players = ctx.baseModel.dataset.players;
+  const active = new Set([...players.values()].filter(p => p.active).map(p => p.id));
+  const elo = ctx.baseModel.elo;
+  const H = hintsFor(cfg, A, b, id, {
+    nameOf: j => nameOfId(ctx, j),
+    ratingOf: j => elo.final[elo.index.get(j)],
+    isActive: j => active.has(j),
+    activeIds: elo.ids.filter(j => active.has(j) && elo.played[elo.index.get(j)] > 0),
+  });
+  if (!H) return null;
+  const link = (r) => r.link === 'team' ? linkTo(ctx, 'team', { a: id, b: r.id }) : linkTo(ctx, 'h2h', { a: id, b: r.id });
+  return h('details', { class: 'hints' },
+    h('summary', {}, 'Was fehlt noch?'),
+    H.lines.map(t => h('p', {}, t)),
+    H.groups.map(g => [h('h4', {}, g.title),
+      h('ul', { class: 'hint-list' }, g.rows.map(r => h('li', {}, h('a', { class: 'tap' + (r.done ? ' done' : ''), ...link(r) },
+        h('span', { class: 'hint-name' }, nameOfId(ctx, r.id)), r.text ? h('span', { class: 'hint-text' }, r.text) : null))))]),
+    h('p', { class: 'muted small' }, 'Stand jetzt. Was einmal verdient ist, bleibt.'));
 }
 
 /** „Läuft noch“: who leads the current calendar week (no badge until Monday 0 Uhr). */
@@ -224,13 +279,13 @@ function collection(ctx, A, id) {
       h('a', { class: 'tap', ...linkTo(ctx, 'abzeichen') }, 'Alle Abzeichen')),
     newest.length ? [h('h3', { class: 'sec' }, 'Zuletzt'),
       h('div', { class: 'earned-list' }, newest.map(e => earnedCard(ctx, A, e, { isNew: isMe && e.t > ctx.badgeSeen })))] : null,
-    goals.length ? [h('h3', { class: 'sec' }, 'Als Nächstes'), h('ul', { class: 'goal-list' }, goals.map(x => h('li', {}, goalRow(ctx, A, x.b, x.pr))))] : null,
+    goals.length ? [h('h3', { class: 'sec' }, 'Als Nächstes'), h('ul', { class: 'goal-list' }, goals.map(x => h('li', {}, goalRow(ctx, A, x.b, x.pr, id))))] : null,
     CATEGORIES.map(cat => h('section', { class: 'hub-group' },
       h('h3', {}, cat),
       h('ul', { class: 'badge-list' }, ORDER.filter(b => DEFS[b].cat === cat).map(b => {
         const lv = p.level[b] || 0, pr = progressOf(cfg, A.levels, b, p);
         const status = lv ? (badgeHasLevels(b) ? `${tierName(cfg, lv)}${pr.ratio >= 1 ? ', alle Stufen' : ''}` : 'geschafft') : 'noch nicht';
-        return h('li', {}, h('a', { class: 'badge-row tap' + (lv ? '' : ' locked'), ...badgeLink(ctx, b) },
+        return h('li', {}, h('a', { class: 'badge-row tap' + (lv ? '' : ' locked'), ...linkTo(ctx, 'abzeichen', { id: b, spieler: id }) },
           badgeMedal(cfg, b, lv, 44),
           h('span', { class: 'br-text' },
             h('span', { class: 'br-name' }, DEFS[b].name, h('span', { class: 'br-mine' }, status)),

@@ -13,6 +13,8 @@
 //   byGame:  Map g → [{ id, badge, level }]       (g = index in the pooled games)
 //   weekly:  [{ from, to, id|null, gain, games }]  completed calendar weeks, newest first
 //   running: the same for the current week (leader so far, not awarded) or null
+//   detail(id): the state now for „Was fehlt“ (opponents, partners, streaks, this week, Platz)
+//   ranking: [{id, rating}] Platz by the badge rules now · modeRanks: the same for king_single / king_double
 //   reigns:  [{ id, from, to, days, current }]     Platz 1 over time, newest first
 //   levels:  badge → thresholds (from config)
 
@@ -360,6 +362,7 @@ export function computeAchievements(pooled, modes = {}, now = Infinity) {
   }
 
   // ── Einzel- / Doppelkönig: Platz 1 in the Wertung Einzel / Doppel ──
+  const modeRanks = {};    // badge rules' ranking now, per mode league (for „Was fehlt“)
   const refIdx = new Map(games.map((x, g) => [x.ref + '|' + x.winners.join() + '|' + x.losers.join(), g]));
   for (const [badge, m] of [['king_single', modes.einzel], ['king_double', modes.doppel]]) {
     if (!m) continue;
@@ -372,7 +375,50 @@ export function computeAchievements(pooled, modes = {}, now = Infinity) {
       if (top === undefined) return;
       award(elo.index.get(m.elo.ids[top]), badge, 1, x.t, refIdx.get(x.ref + '|' + x.winners.join() + '|' + x.losers.join()) ?? null);
     });
+    modeRanks[badge] = ranking(st, now).map(k => ({ id: m.elo.ids[k], rating: st[k].rating }));
   }
+
+  // ── „Was fehlt“: the state now, per player (computed on demand; nothing here changes a badge) ──
+  const rankNow = ranking(S, now).map(k => ({ id: elo.ids[k], rating: S[k].rating }));
+  const nowWeek = Number.isFinite(now) ? weekOf(now) : null;
+  const detail = id => {
+    const k = elo.index.get(id);
+    if (k === undefined) return null;
+    const s = S[k];
+    const opponents = [];
+    for (let j = 0; j < n; j++) {
+      if (j === k || !s.faced.has(j)) continue;
+      opponents.push({
+        id: elo.ids[j], beaten: s.beaten.has(j),
+        singles: sm[k * n + j], singleWins: sw[k * n + j],       // Einzel against j
+        meetings: am[k * n + j], meetingWins: aw[k * n + j],     // Begegnungen (Doppel count half)
+        abo: abo[k * n + j], lostLast: lastRes[k * n + j] === -1, // current singles run, last singles result
+      });
+    }
+    const partners = [];
+    for (let j = 0; j < n; j++) if (j !== k && dw[k * n + j]) partners.push({ id: elo.ids[j], wins: dw[k * n + j] });
+    // current Angstgegner by the badge's rule (lowest share of Begegnungen won, ≥ h2h_min_games)
+    let worst = null;
+    for (let j = 0; j < n; j++) {
+      const m = am[k * n + j];
+      if (j === k || m < h2hMin) continue;
+      const r = aw[k * n + j] / m;
+      if (!worst || r < worst.r || (r === worst.r && m > worst.m)) worst = { j, r, m };
+    }
+    const thisWeek = s.week !== null && s.week === nowWeek;
+    return {
+      rating: s.rating, played: s.played, wins: s.wins, losses: s.losses, last: s.last,
+      winStreak: s.winStreak, lossStreak: s.lossStreak, underdog: s.underdog,
+      weekStreak: s.week !== null && nowWeek !== null && nowWeek - s.week <= 7 ? s.weekStreak : 0,
+      playedThisWeek: thisWeek,
+      week: thisWeek ? { gain: s.rating - s.weekStart, wins: s.weekWins, lost: s.weekLost, games: weeks.get(nowWeek)?.get(k)?.games ?? 0 } : null,
+      opponents, partners,
+      nemesis: worst ? elo.ids[worst.j] : null,
+      weekdays: [...s.weekdays].sort(),
+      rank: rankNow.findIndex(r => r.id === id) + 1 || null,          // Platz by the badge rules, null = not ranked
+      rankedGames: minR, rankedDays: active,
+    };
+  };
 
   const players = new Map();
   elo.ids.forEach((id, k) => {
@@ -381,7 +427,7 @@ export function computeAchievements(pooled, modes = {}, now = Infinity) {
   });
   const levels = LV;
   return {
-    players, byGame, levels,
+    players, byGame, levels, detail, ranking: rankNow, modeRanks,
     weekly: weekly.reverse(), running,
     reigns: reigns.map(r => ({ id: elo.ids[r.k], from: r.from, to: r.to, days: r.days, current: !!r.current })).reverse(),
   };

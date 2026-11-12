@@ -147,7 +147,7 @@ function badgeSection(ctx, id) {
   return [head,
     h('p', { class: 'muted' }, `${earnedCount(p)} von ${totalLevels(A)} Stufen, gezählt über alle Spiele.`),
     p.earned.length ? h('div', { class: 'earned-list' }, newestOf(p).slice(0, 3).map(e => earnedCard(ctx, A, e, { isNew: isMe && e.t > ctx.badgeSeen }))) : null,
-    goals.length ? h('ul', { class: 'goal-list' }, goals.map(x => h('li', {}, goalRow(ctx, A, x.b, x.pr)))) : null,
+    goals.length ? h('ul', { class: 'goal-list' }, goals.map(x => h('li', {}, goalRow(ctx, A, x.b, x.pr, id)))) : null,
     h('nav', { class: 'links' }, h('a', { class: 'tap', ...collectionLink(ctx, id) }, isMe ? 'Alle deine Abzeichen' : 'Alle Abzeichen'))];
 }
 

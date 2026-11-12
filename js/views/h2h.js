@@ -7,13 +7,14 @@ import { lineChart } from '../ui/charts/line.js';
 import { tile, viewHead, nameOf, byName, linkTo, modeNote, missingInMode, MODE_WORD } from './common.js';
 import { duel } from './duels.js';
 import { gameList } from './games.js';
+import { badgeCompare } from './badges.js';
 
 export default {
   id: 'h2h',
   title: 'Direktvergleich',
   mount(el, ctx) {
-    const head = h('div'), tiles = h('div'), chartEl = h('div'), list = h('div');
-    render(el, head, tiles, chartEl, list);
+    const head = h('div'), tiles = h('div'), chartEl = h('div'), badgesEl = h('div'), list = h('div');
+    render(el, head, tiles, chartEl, badgesEl, list);
     let chart = null;
 
     function update(c) {
@@ -73,6 +74,8 @@ export default {
         })),
       };
       if (!chart) chart = lineChart(chartEl, spec); else chart.update(spec);
+
+      render(badgesEl, badgeCompare(c, ids));   // the players involved: 2, or 4 in team mode
 
       render(list, d.games.length ? [
         h('h2', {}, 'Alle Begegnungen'),

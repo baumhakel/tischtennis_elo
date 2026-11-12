@@ -5,7 +5,7 @@ import * as fmt from '../ui/format.js';
 import { seriesColor, css, withAlpha } from '../ui/colors.js';
 import { movementSeries } from '../ui/series.js';
 import { lineChart } from '../ui/charts/line.js';
-import { viewHead, tile, tableView } from './common.js';
+import { viewHead, tile, tableView, linkTo } from './common.js';
 
 const LEVEL = { calm: 'ruhig', normal: 'normal', turbulent: 'turbulent' };
 
@@ -25,7 +25,8 @@ export default {
         `Wie viele Elo-Punkte pro Spiel den Besitzer wechseln, gemittelt über die jeweils letzten ${cfg.movement_window} Spiele. Das graue Band zeigt den üblichen Bereich (${cfg.movement_calm_percentile}. bis ${cfg.movement_turbulent_percentile}. Perzentil): Darüber ist es turbulent, darunter ruhig.`));
       render(tiles,
         tile({ label: 'Gerade', value: LEVEL[mv.level] || '–', sub: Number.isFinite(mv.percentile) ? `bewegter als ${Math.round(mv.percentile)} % der bisherigen Zeit` : 'Noch zu wenige Spiele.' }),
-        tile({ label: 'Aktueller Mittelwert', value: fmt.dec1(mv.current), sub: 'Elo-Punkte pro Spiel' }),
+        tile({ label: 'Aktueller Mittelwert', value: fmt.dec1(mv.current), sub: `Elo-Punkte pro Spiel; die letzten ${cfg.movement_window} Spiele ansehen`,
+          link: linkTo(c, 'spiele', { letzte: String(cfg.movement_window), sortierung: 'elo' }) }),
         tile({ label: 'Ruhig bis', value: fmt.dec1(mv.calmAt), sub: `${cfg.movement_calm_percentile}. Perzentil` }),
         tile({ label: 'Turbulent ab', value: fmt.dec1(mv.turbulentAt), sub: `${cfg.movement_turbulent_percentile}. Perzentil` }));
       const c1 = seriesColor(0);

@@ -18,8 +18,8 @@ export function signed(x, digits = 0) {
   return (r > 0 ? '+' : '−') + s;
 }
 
-/** 0.537 → "54 %" */
-export const pct = x => (Number.isFinite(x) ? nf0.format(100 * x) + ' %' : '–');
+/** 0.537 → "54 %" (non-breaking space) */
+export const pct = x => (Number.isFinite(x) ? nf0.format(100 * x) + '\u00a0%' : '–');   // no line break before %
 
 const pad = n => String(n).padStart(2, '0');
 
@@ -56,4 +56,15 @@ export function ago(serial, nowSerial) {
   if (days < 14) return `vor ${days} Tagen`;
   if (days < 60) return `vor ${Math.round(days / 7)} Wochen`;
   return `vor ${Math.round(days / 30)} Monaten`;
+}
+
+/**
+ * When a game was played, for lists: "heute, 14:23", "gestern, 09:10", "12.11.2026, 14:23".
+ * approx (interpolated Altdaten time): "ca. 12.11.2026" without the time.
+ */
+export function when(serial, nowSerial, approx = false) {
+  if (approx) return `ca. ${date(serial)}`;
+  const days = Math.floor(nowSerial) - Math.floor(serial);
+  const day = days === 0 ? 'heute' : days === 1 ? 'gestern' : date(serial);
+  return `${day}, ${time(serial)}`;
 }

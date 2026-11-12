@@ -1,6 +1,6 @@
 // Static app constants. No side effects: safe to import from core/ (browser, worker, Node).
 
-export const APP_VERSION = '2.0.0-dev.1';   // bump to invalidate the browser cache
+export const APP_VERSION = '2.0.0-dev.3';   // bump to invalidate the browser cache
 
 // >>> FILL IN: OAuth client ID (ends in .apps.googleusercontent.com)
 export const CLIENT_ID = '975581090195-pgfv9ptq40fkp728151hqpru116pg732.apps.googleusercontent.com';
@@ -53,6 +53,8 @@ export const CONFIG_DEFAULTS = {
   asymptotic_init_rounds:        { type: 'integer', value: 5,    min: 1 },
   // filters
   default_min_games:             { type: 'integer', value: 20,   min: 0 },
+  default_min_games_single:      { type: 'integer', value: 15,   min: 0 },   // min-games default in the Einzel mode
+  default_min_games_double:      { type: 'integer', value: 10,   min: 0 },   // … in the Doppel mode
   default_inactivity_days:       { type: 'integer', value: 30,   min: 0 },   // 0 = filter off
   // dashboard
   dashboard_days:                { type: 'integer', value: 7,    min: 1 },   // curves, Δ in leaderboard, recent upset
@@ -72,6 +74,9 @@ export const CONFIG_DEFAULTS = {
   team_min_games:                { type: 'integer', value: 5,    min: 1 },   // doubles together before a team is ranked
   calibration_bins:              { type: 'integer', value: 10,   min: 1 },
   upsets_list_length:            { type: 'integer', value: 20,   min: 1 },   // rows in the Überraschungen view
+  recent_games:                  { type: 'integer', value: 3,    min: 1 },   // Letzte Spiele (Übersicht, profile)
+  recent_games_expanded:         { type: 'integer', value: 10,   min: 1 },   // … after „Mehr anzeigen“
+  games_page_size:               { type: 'integer', value: 50,   min: 1 },   // Alle Spiele: rows per „Weitere laden“
   focus_default_count:           { type: 'integer', value: 3,    min: 0, max: 8 }, // players highlighted when none chosen
   // app shell
   default_x_axis:                { type: 'enum',    value: 'game', options: ['date', 'game', 'own'] },

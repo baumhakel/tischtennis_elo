@@ -1,10 +1,11 @@
-// Übersicht: highlight tiles, recent Elo curves, leaderboard.
+// Übersicht: highlight tiles, recent Elo curves, last games, leaderboard.
 import { h, render } from '../ui/dom.js';
 import * as fmt from '../ui/format.js';
 import { seriesColor, seriesVar, css } from '../ui/colors.js';
 import { ratingSeries, recentStart } from '../ui/series.js';
 import { lineChart } from '../ui/charts/line.js';
-import { focusLegend, tile, nameOf } from './common.js';
+import { focusLegend, tile, nameOf, linkTo } from './common.js';
+import { recentGames } from './games.js';
 
 export default {
   id: 'dashboard',
@@ -15,15 +16,17 @@ export default {
     const chartEl = h('div');
     const note = h('p', { class: 'chart-note' });
     const board = h('div');
-    render(el, tiles, h('h2', {}, 'Aktueller Verlauf'), legend, chartEl, note, board);
+    const recent = recentGames();
+    render(el, tiles, h('h2', {}, 'Aktueller Verlauf'), legend, chartEl, note, recent.el, board);
     let chart = null;
 
     function update(c) {
       render(tiles, highlights(c));
       render(legend, focusLegend(c));
       const spec = curves(c);
-      note.textContent = spec.note;
+      render(note, spec.note);
       if (!chart) chart = lineChart(chartEl, spec); else chart.update(spec);
+      recent.update(c);
       render(board, leaderboard(c));
     }
     update(ctx);
@@ -42,16 +45,17 @@ function highlights(ctx) {
   const rs = model.stats.get('risingStar').filter(r => ok(r.k))[0];
   const rising = rs
     ? tile({ label: `Aufsteiger ${week(config.rising_star_days)}`, value: fmt.signed(rs.delta), tone: rs.delta > 0 ? 'up' : 'down',
-        who: nameOf(ctx, rs.k), sub: `Elo-Punkte aus ${rs.games} Spielen` })
+        who: nameOf(ctx, rs.k), sub: `Elo-Punkte aus ${rs.games} Spielen`, link: linkTo(ctx, 'aufsteiger') })
     : tile({ label: `Aufsteiger ${week(config.rising_star_days)}`, value: '–',
-        sub: `Niemand hat in dieser Zeit ${config.rising_star_min_games} Spiele bestritten.` });
+        sub: `Niemand hat in dieser Zeit ${config.rising_star_min_games} Spiele bestritten.`, link: linkTo(ctx, 'aufsteiger') });
 
   const form = model.stats.get('form');
   let best = -1;
   for (const k of visible.shown) if (form.streak[k] > 0 && (best < 0 || form.streak[k] > form.streak[best])) best = k;
   const streak = best >= 0
-    ? tile({ label: 'Aktuelle Siegesserie', value: `${form.streak[best]} Siege`, who: nameOf(ctx, best), sub: 'in Folge, seither ungeschlagen' })
-    : tile({ label: 'Aktuelle Siegesserie', value: '–', sub: 'Gerade hat niemand eine Siegesserie.' });
+    ? tile({ label: 'Aktuelle Siegesserie', value: `${form.streak[best]} Siege`, who: nameOf(ctx, best), sub: 'in Folge, seither ungeschlagen',
+        link: linkTo(ctx, 'serien', { id: model.elo.ids[best] }) })
+    : tile({ label: 'Aktuelle Siegesserie', value: '–', sub: 'Gerade hat niemand eine Siegesserie.', link: linkTo(ctx, 'serien') });
 
   const recent = model.stats.get('recent');
   const up = model.stats.get('upsets');
@@ -60,7 +64,7 @@ function highlights(ctx) {
   const upset = g >= 0
     ? tile({ label: `Überraschung ${week(config.dashboard_days)}`, value: fmt.pct(model.elo.perGame.eW[g]),
         who: teamNames(ctx, games[g].winners), sub: `Siegchance gegen ${teamNames(ctx, games[g].losers)} am ${fmt.date(games[g].t)}`,
-        onclick: () => ctx.navigate('upsets') })
+        link: linkTo(ctx, 'spiel', { ref: games[g].ref }) })
     : tile({ label: `Überraschung ${week(config.dashboard_days)}`, value: '–', sub: 'In dieser Zeit wurde nicht gespielt.' });
 
   const mv = model.stats.get('movement');
@@ -71,7 +75,7 @@ function highlights(ctx) {
     value: h('span', { class: 'level' }, word,
       h('i', { 'aria-hidden': 'true' }, [1, 2, 3].map(b => h('b', { class: b <= bars ? 'on' : null })))),
     sub: Number.isFinite(mv.percentile) ? `bewegter als ${Math.round(mv.percentile)} % der bisherigen Zeit` : 'Noch zu wenige Spiele.',
-    onclick: () => ctx.navigate('movement'),
+    link: linkTo(ctx, 'movement'),
   });
   return [rising, streak, upset, movement];
 }
@@ -97,8 +101,9 @@ function curves(ctx) {
   const N = model.dataset.games.length;
   return {
     x, xType: axis === 'date' ? 'time' : 'num', series, height: 240, y: {},
-    note: N ? `${N - start} Spiele seit dem ${fmt.date(model.dataset.games[start].t)}.` +
-      (filters.xAxis === 'own' ? ' Die x-Achse zeigt hier die Spielnummer.' : '') : '',
+    note: N ? [h('a', { class: 'inline-link', ...linkTo(ctx, 'spiele', { von: model.dataset.games[start].ref }) },
+      `${N - start} Spiele seit dem ${fmt.date(model.dataset.games[start].t)}`), '.',
+      filters.xAxis === 'own' ? ' Die x-Achse zeigt hier die Spielnummer.' : ''] : '',
   };
 }
 
@@ -116,7 +121,7 @@ function leaderboard(ctx) {
     const prov = visible.provisional.has(r.k);
     if (!prov) rank++;
     const slot = focus.slotOf.get(r.k);
-    return h('tr', { class: prov ? 'provisional' : null, onclick: () => navigate('player', { id: r.id }) },
+    return h('tr', { class: 'tap-row' + (prov ? ' provisional' : ''), onclick: () => navigate('player', { id: r.id }) },
       h('td', { class: 'rank' }, prov ? '' : String(rank)),
       h('td', { class: 'name' },
         h('span', { class: 'player' },
@@ -138,7 +143,7 @@ function leaderboard(ctx) {
         h('th', { class: 'rank' }, h('span', { class: 'sr' }, 'Rang')),
         h('th', {}, 'Spieler'),
         h('th', { class: 'num' }, 'Elo'),
-        h('th', { class: 'num' }, config.dashboard_days === 7 ? 'Woche' : `${config.dashboard_days} Tage`),
+        h('th', { class: 'num' }, h('a', { class: 'th-link', ...linkTo(ctx, 'aufsteiger') }, config.dashboard_days === 7 ? 'Woche' : `${config.dashboard_days} Tage`)),
         h('th', { class: 'num wide' }, 'Spiele'),
         h('th', { class: 'num wide' }, 'S:N'),
         h('th', { class: 'num wide' }, 'Siegquote'),

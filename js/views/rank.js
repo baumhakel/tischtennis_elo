@@ -4,7 +4,7 @@ import { h, render } from '../ui/dom.js';
 import { seriesColor, css } from '../ui/colors.js';
 import { rankSeries } from '../ui/series.js';
 import { lineChart } from '../ui/charts/line.js';
-import { focusLegend, tableView, viewHead, nameOf } from './common.js';
+import { focusLegend, tableView, viewHead, nameOf, profileLink } from './common.js';
 
 export default {
   id: 'rank',
@@ -39,7 +39,7 @@ export default {
       const rec = c.model.stats.get('records', { minGames: c.filters.minGames });
       render(table, tableView('Als Tabelle anzeigen', ['Platz', 'Spieler', 'Spiele auf Platz 1', 'Tage auf Platz 1'],
         now.map(k => [`${rk.rank[last * n + k]}.`, nameOf(c, k), String(rec.leaderGames[k]), String(Math.round(rec.leaderDays[k]))]),
-        [0, 2, 3]));
+        [0, 2, 3], now.map(k => profileLink(c, k))));
     }
     update(ctx);
     return { update, unmount() { chart?.destroy(); } };

@@ -322,7 +322,7 @@ function applyCorrections(grid, rows, report, counts) {
     for (const r of hits) {
       if (r.voided) continue;
       if (action === 'void') { r.voided = true; counts.voided++; }
-      else { [r.w, r.l] = [r.l, r.w]; counts.swapped++; }
+      else { [r.w, r.l] = [r.l, r.w]; r.corrected = !r.corrected; counts.swapped++; }
     }
   }
 }
@@ -364,6 +364,7 @@ function toGame(r, idByName, unknown, report) {
     winners, losers, double: nW === 2, approxTime: r.source === 'legacy',
   };
   if (r.sourceRow != null) game.sourceRow = r.sourceRow;
+  if (r.corrected) game.corrected = true;
   return game;
 }
 

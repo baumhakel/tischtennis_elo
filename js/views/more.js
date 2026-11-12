@@ -8,7 +8,7 @@ export default {
   mount(el, ctx) {
     const update = c => render(el,
       h('nav', { class: 'menu', 'aria-label': 'Alle Ansichten' },
-        h('ul', {}, VIEWS.filter(v => v.id !== 'more').map(v =>
+        h('ul', {}, VIEWS.filter(v => v.id !== 'more' && v.menu !== false).map(v =>
           h('li', {}, h('a', { href: `#/${v.id}`, onclick: e => { e.preventDefault(); c.navigate(v.id); } },
             h('span', {}, v.title),
             v.phase ? h('span', { class: 'muted' }, 'folgt') : null))))));

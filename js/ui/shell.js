@@ -3,6 +3,7 @@ import { h, render } from './dom.js';
 import * as fmt from './format.js';
 import { VIEWS } from '../views/index.js';
 import { resolveFilters } from '../core/filters.js';
+import { MODES, MODE_LABELS, modelFor } from '../app/modes.js';
 
 const X_LABELS = { date: 'Datum', game: 'Spielnummer', own: 'Eigene Spiele' };
 
@@ -16,12 +17,20 @@ export function createShell(root, { store, actions }) {
   const status = h('div', { class: 'status', role: 'status', 'aria-live': 'polite' });
   const filters = h('details', { class: 'filters' });
   const viewEl = h('main', { id: 'view', tabindex: '-1' });
+  // the mode switch: the only place that changes Alle / Einzel / Doppel
+  const modeSeg = h('div', { class: 'seg mode-seg', role: 'radiogroup', 'aria-label': 'Wertung' },
+    MODES.map(m => h('label', {},
+      h('input', { type: 'radio', name: 'mode', value: m, onchange: () => store.set({ filters: { mode: m === 'alle' ? null : m } }) }),
+      h('span', {}, MODE_LABELS[m]))));
+  const modeBar = h('div', { class: 'mode-bar' }, h('span', { class: 'label' }, 'Wertung'), modeSeg);
   const nav = h('nav', { class: 'tabs', 'aria-label': 'Ansichten' });
 
   render(root,
     h('header', { class: 'band' },
-      h('div', { class: 'band-inner' }, h('h1', {}, 'Tischtennis Elo'), account)),
-    h('div', { class: 'frame' }, status, filters, viewEl),
+      h('div', { class: 'band-inner' },
+        h('h1', {}, h('a', { href: '#/dashboard', onclick: e => { e.preventDefault(); actions.navigate('dashboard'); } }, 'Tischtennis Elo')),
+        account)),
+    h('div', { class: 'frame' }, status, modeBar, filters, viewEl),
     nav);
 
   // filter controls are built once; values follow the state
@@ -75,9 +84,11 @@ export function createShell(root, { store, actions }) {
 
     // filters
     filters.hidden = !data.model;
+    modeBar.hidden = !data.model;
     if (data.model) {
       const f = resolveFilters(s.filters, data.model.dataset.config);
-      const maxPlayed = Math.max(1, ...data.model.elo.played);
+      for (const input of modeSeg.querySelectorAll('input')) input.checked = input.value === f.mode;
+      const maxPlayed = Math.max(1, ...modelFor(data.model, f.mode).elo.played);
       min.max = String(maxPlayed);
       min.value = String(Math.min(f.minGames, maxPlayed));
       minOut.value = String(f.minGames);

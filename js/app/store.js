@@ -3,7 +3,7 @@
 // state = {
 //   view:    'dashboard' | …                       current view id
 //   params:  { [key]: string }                     view-specific, e.g. { metric: 'wins' }
-//   filters: { minGames, inactivityDays, xAxis, focus }   null = use the config tab default
+//   filters: { mode, minGames, inactivityDays, xAxis, focus }   null = default (mode: Alle; others: config tab)
 //            focus = player IDs by colour slot (null = empty slot), at most 8
 //   data:    { model, source: null|'cache'|'sheet', updatedAt, loading, error, needsSignIn }
 //   auth:    { ready, signedIn, email, expiresAt }
@@ -14,7 +14,7 @@ export function initialState() {
   return {
     view: 'dashboard',
     params: {},
-    filters: { minGames: null, inactivityDays: null, xAxis: null, focus: null },
+    filters: { mode: null, minGames: null, inactivityDays: null, xAxis: null, focus: null },
     data: { model: null, source: null, updatedAt: 0, loading: false, error: null, needsSignIn: false },
     auth: { ready: false, signedIn: false, email: null, expiresAt: 0 },
   };

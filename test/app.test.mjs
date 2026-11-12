@@ -12,12 +12,14 @@ import { compute } from '../js/core/elo.js';
 import { APP_VERSION } from '../js/config.js';
 
 test('url: round trip, defaults, junk ignored', () => {
-  const s = { view: 'matrix', params: { metric: 'wins', a: 'p 1' }, filters: { minGames: 10, inactivityDays: 0, xAxis: 'date', focus: ['p003', null, 'p007'] } };
+  const s = { view: 'matrix', params: { metric: 'wins', a: 'p 1' }, filters: { mode: 'einzel', minGames: 10, inactivityDays: 0, xAxis: 'date', focus: ['p003', null, 'p007'] } };
   const hash = formatHash(s);
-  assert.equal(hash, '#/matrix?min=10&inaktiv=0&x=date&fokus=p003%2C-%2Cp007&a=p+1&metric=wins');
+  assert.equal(hash, '#/matrix?modus=einzel&min=10&inaktiv=0&x=date&fokus=p003%2C-%2Cp007&a=p+1&metric=wins');
+  assert.equal(parseHash('#/x?modus=quatsch').filters.mode, null);
+  assert.equal(formatHash({ view: 'x', filters: { mode: 'alle' } }), '#/x');
   assert.deepEqual(parseHash(hash), s);
-  assert.deepEqual(parseHash(''), { view: 'dashboard', params: {}, filters: { minGames: null, inactivityDays: null, xAxis: null, focus: null } });
-  assert.deepEqual(parseHash('#/x?min=abc&x=sideways').filters, { minGames: null, inactivityDays: null, xAxis: null, focus: null });
+  assert.deepEqual(parseHash(''), { view: 'dashboard', params: {}, filters: { mode: null, minGames: null, inactivityDays: null, xAxis: null, focus: null } });
+  assert.deepEqual(parseHash('#/x?min=abc&x=sideways').filters, { mode: null, minGames: null, inactivityDays: null, xAxis: null, focus: null });
   assert.deepEqual(parseHash('#/x?fokus=').filters.focus, [null]);
   assert.equal(formatHash({ view: 'dashboard', filters: { minGames: null } }), '#/dashboard');
 });
@@ -42,7 +44,10 @@ test('filters: config defaults, inactive hidden, provisional listed', () => {
   const raw = demoRaw('Europe/Vienna');
   const d = load(raw), elo = compute(d);
   const f = resolveFilters({ minGames: null, inactivityDays: 7, xAxis: null }, d.config);
-  assert.deepEqual(f, { minGames: d.config.default_min_games, inactivityDays: 7, xAxis: d.config.default_x_axis, focus: null });
+  assert.deepEqual(f, { mode: 'alle', minGames: d.config.default_min_games, inactivityDays: 7, xAxis: d.config.default_x_axis, focus: null });
+  assert.equal(resolveFilters({ mode: 'einzel' }, d.config).minGames, d.config.default_min_games_single);
+  assert.equal(resolveFilters({ mode: 'doppel' }, d.config).minGames, d.config.default_min_games_double);
+  assert.equal(resolveFilters({ mode: 'doppel', minGames: 3 }, d.config).minGames, 3);
   const now = d.games.at(-1).t;
   const v = visible(d, elo, { ...f, minGames: 60 }, now);
   for (let k = 0; k < elo.ids.length; k++) {

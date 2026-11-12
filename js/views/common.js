@@ -2,6 +2,22 @@
 import { h } from '../ui/dom.js';
 import { seriesVar } from '../ui/colors.js';
 import { toggleFocus, MAX_FOCUS } from '../core/filters.js';
+import { formatHash } from '../app/url.js';
+
+/**
+ * Props for an in-app link: real href (long-press, new tab, Back) plus in-app navigation.
+ * filters (optional) patches the global filters, e.g. { focus: [id] } to highlight a player.
+ * Never pass the mode here: a tap never changes the mode.
+ */
+export function linkTo(ctx, view, params = {}, filters = null) {
+  return {
+    href: formatHash({ view, params, filters: { ...ctx.state.filters, ...(filters || {}) } }),
+    onclick: e => { e.preventDefault(); ctx.navigate(view, params, filters); },
+  };
+}
+
+/** Link props to player k's profile. */
+export const profileLink = (ctx, k) => linkTo(ctx, 'player', { id: ctx.model.elo.ids[k] });
 
 /** Players by display name (German collation). */
 export function byName(ctx, ks) {
@@ -38,20 +54,36 @@ export function focusLegend(ctx, { contextLabel = 'übrige Spieler' } = {}) {
     !focus.explicit && focus.slotOf.size ? h('span', { class: 'note' }, `Vorauswahl: die ${focus.slotOf.size} Besten`) : null);
 }
 
-/** Collapsible table twin of a chart. rows = arrays of cells (strings or nodes); numeric columns by index. */
-export function tableView(summary, head, rows, numeric = []) {
+/**
+ * Plain table. rows = arrays of cells (strings or nodes); numeric columns by index.
+ * links (optional): per row link props (linkTo) or null; the whole row is tappable, the first
+ * cell carries the real link (keyboard, long-press).
+ */
+export function plainTable(head, rows, numeric = [], links = null) {
   const num = i => (numeric.includes(i) ? 'num' : null);
-  return h('details', { class: 'table-view' },
-    h('summary', {}, summary),
-    h('table', { class: 'plain' },
-      h('thead', {}, h('tr', {}, head.map((t, i) => h('th', { class: num(i) }, t)))),
-      h('tbody', {}, rows.map(r => h('tr', {}, r.map((c, i) => h('td', { class: num(i) }, c)))))));
+  return h('table', { class: 'plain' },
+    h('thead', {}, h('tr', {}, head.map((t, i) => h('th', { class: num(i) }, t)))),
+    h('tbody', {}, rows.map((r, ri) => {
+      const L = links?.[ri];
+      return h('tr', L ? { class: 'tap-row', onclick: e => { if (!e.target.closest('a')) L.onclick(e); } } : {},
+        r.map((c, i) => h('td', { class: num(i) }, i === 0 && L ? h('a', { class: 'row-link', ...L }, c) : c)));
+    })));
 }
 
-/** Stat tile. tone: 'up' | 'down' | null colours the value (text tokens, not series colours). */
-export function tile({ label, value, who, sub, tone = null, onclick }) {
-  return h(onclick ? 'button' : 'div', { class: 'tile', type: onclick ? 'button' : null, onclick,
-    style: onclick ? 'text-align:left;border:0;border-radius:0;font:inherit;color:inherit;cursor:pointer' : null },
+/** Collapsible table twin of a chart (see plainTable for links). */
+export function tableView(summary, head, rows, numeric = [], links = null) {
+  return h('details', { class: 'table-view' }, h('summary', {}, summary), plainTable(head, rows, numeric, links));
+}
+
+/**
+ * Stat tile. tone: 'up' | 'down' | null colours the value (text tokens, not series colours).
+ * link: props from linkTo() → the whole tile is a link (chevron cue). onclick: a button.
+ */
+export function tile({ label, value, who, sub, tone = null, onclick, link }) {
+  const tag = link ? 'a' : onclick ? 'button' : 'div';
+  return h(tag, { class: 'tile' + (link || onclick ? ' tap' : ''), type: onclick && !link ? 'button' : null,
+    ...(link || (onclick ? { onclick } : {})),
+    style: onclick && !link ? 'text-align:left;border:0;border-radius:0;font:inherit;color:inherit;cursor:pointer' : null },
     h('span', { class: 't-label' }, label),
     h('span', { class: 't-value' + (tone ? ' ' + tone : '') }, value),
     who ? h('span', { class: 't-who' }, who) : null,
@@ -79,5 +111,18 @@ export function segmented(ctx, { label, param, options, value }) {
         onchange: () => ctx.setParams({ [param]: v }) }),
       h('span', {}, t))));
 }
+
+/**
+ * Note for content that doesn't exist in the current mode. Points to the switch; never switches
+ * itself (a tap never changes the mode).
+ */
+export function modeNote(text) {
+  return h('p', { class: 'mode-note' }, text, ' Oben unter „Wertung“ umschalten.');
+}
+
+/** Player id has no games in the current mode (but exists in the pooled data)? */
+export const missingInMode = (ctx, id) => !!id && ctx.mode !== 'alle' && !ctx.model.elo.index.has(id) && ctx.baseModel.elo.index.has(id);
+
+export const MODE_WORD = { einzel: 'Einzel', doppel: 'Doppel' };
 
 export const X_AXIS_NAMES = { date: 'Datum', game: 'Spielnummer', own: 'Nummer des eigenen Spiels' };

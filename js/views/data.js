@@ -2,6 +2,8 @@
 import { h, render } from '../ui/dom.js';
 import * as fmt from '../ui/format.js';
 import { CONFIG_DEFAULTS } from '../config.js';
+import { linkTo } from './common.js';
+import { findGame } from './game-query.js';
 
 export default {
   id: 'data',
@@ -25,10 +27,12 @@ function page(ctx) {
       h('h2', {}, 'Datenstand'),
       h('dl', { class: 'facts' },
         fact('Quelle', d.source === 'sheet' ? `Google-Tabelle, gelesen ${fmt.stamp(d.updatedAt)}` : `Offline-Kopie vom ${fmt.stamp(d.updatedAt)}`),
-        fact('Gewertete Spiele', fmt.int(counts.games)),
-        fact('Altdaten (Excel)', `${fmt.int(counts.legacyRows)} Spiele`),
+        fact('Gewertete Spiele', h('a', { class: 'inline-link', ...linkTo(ctx, 'spiele') }, fmt.int(counts.games))),
+        fact('Altdaten (Excel)', h('a', { class: 'inline-link', ...linkTo(ctx, 'spiele', { quelle: 'altdaten' }) }, `${fmt.int(counts.legacyRows)} Spiele`)),
         fact('Formulareinträge', `${fmt.int(counts.spieleRows)}` + (counts.beforeCutoff ? `, davon ${fmt.int(counts.beforeCutoff)} ${counts.beforeCutoff === 1 ? 'Testeintrag' : 'Testeinträge'} vor dem ${config.responses_valid_from != null ? fmt.date(config.responses_valid_from) : '–'}` : '')),
-        fact('Korrekturen', `${counts.voided} gestrichen, ${counts.swapped} mit vertauschtem Ergebnis`),
+        fact('Korrekturen', `${counts.voided} gestrichen, `, counts.swapped
+          ? h('a', { class: 'inline-link', ...linkTo(ctx, 'spiele', { korrigiert: '1' }) }, `${counts.swapped} mit vertauschtem Ergebnis`)
+          : '0 mit vertauschtem Ergebnis'),
         fact('Nicht gewertet', counts.skipped ? `${counts.skipped} ${counts.skipped === 1 ? 'Zeile' : 'Zeilen'} (siehe Hinweise)` : 'keine'),
         fact('Spieler', `${fmt.int(ctx.model.elo.ids.length)} mit mindestens einem Spiel`))),
 
@@ -36,7 +40,8 @@ function page(ctx) {
       h('h2', {}, issues.length ? `Hinweise (${issues.length})` : 'Hinweise'),
       issues.length
         ? h('ul', { class: 'issues' },
-            [...errors, ...warnings].map(i => h('li', { class: i.level }, h('span', { class: 'tag' }, i.level === 'error' ? 'Fehler' : 'Hinweis'), i.message)))
+            [...errors, ...warnings].map(i => h('li', { class: i.level }, h('span', { class: 'tag' }, i.level === 'error' ? 'Fehler' : 'Hinweis'), i.message,
+              i.ref && findGame(dataset, i.ref) >= 0 ? [' ', h('a', { class: 'inline-link', ...linkTo(ctx, 'spiel', { ref: i.ref }) }, 'Zum Spiel')] : null)))
         : h('p', { class: 'muted' }, 'Keine. Alle Zeilen konnten gelesen werden.')),
 
     h('section', {},
@@ -56,7 +61,7 @@ function page(ctx) {
         h('button', { class: 'secondary', onclick: ctx.actions.clearCache }, 'Offline-Kopie löschen'))));
 }
 
-const fact = (k, v) => [h('dt', {}, k), h('dd', {}, v)];
+const fact = (k, ...v) => [h('dt', {}, k), h('dd', {}, v)];
 
 function show(key, v) {
   if (v == null) return '–';

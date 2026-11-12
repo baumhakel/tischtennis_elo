@@ -4,8 +4,9 @@ import * as fmt from '../ui/format.js';
 import { seriesColor } from '../ui/colors.js';
 import { ratingSeries } from '../ui/series.js';
 import { lineChart } from '../ui/charts/line.js';
-import { tile, viewHead, nameOf, byName } from './common.js';
+import { tile, viewHead, nameOf, byName, linkTo, modeNote, missingInMode, MODE_WORD } from './common.js';
 import { duel } from './duels.js';
+import { gameList } from './games.js';
 
 export default {
   id: 'h2h',
@@ -22,8 +23,10 @@ export default {
       const ranked = c.visible.shown.slice().sort((x, y) => elo.final[y] - elo.final[x]);
       const a = valid(c.params.a) ? c.params.a : elo.ids[ranked[0] ?? pool[0]];
       const b = valid(c.params.b) && c.params.b !== a ? c.params.b : elo.ids[(ranked.find(k => elo.ids[k] !== a)) ?? pool.find(k => elo.ids[k] !== a)];
-      const a2 = valid(c.params.a2) && ![a, b].includes(c.params.a2) ? c.params.a2 : null;
-      const b2 = valid(c.params.b2) && ![a, b, a2].includes(c.params.b2) ? c.params.b2 : null;
+      const solo = c.mode === 'einzel';                                  // no teams in the singles league
+      const a2 = !solo && valid(c.params.a2) && ![a, b].includes(c.params.a2) ? c.params.a2 : null;
+      const b2 = !solo && valid(c.params.b2) && ![a, b, a2].includes(c.params.b2) ? c.params.b2 : null;
+      const absent = ['a', 'b', 'a2', 'b2'].map(p => c.params[p]).filter(id => missingInMode(c, id));
       const teams = !!(a2 && b2);
       const A = teams ? [a, a2] : [a], B = teams ? [b, b2] : [b];
       const label = ids => ids.map(id => c.names.get(id) ?? id).join(' & ');
@@ -36,10 +39,15 @@ export default {
 
       render(head, viewHead('Direktvergleich', 'Zwei Spieler oder zwei Doppelteams im Vergleich. Mit je einem Partner pro Seite zählen nur Spiele genau dieser beiden Teams; ohne Partner alle Spiele, in denen die beiden Gegner waren.'),
         h('div', { class: 'toolbar duel-pick' },
-          h('span', { class: 'side' }, h('span', { class: 'key', style: `background:${seriesColor(0)}` }), pick('a', a, { exclude: [b, a2, b2] }), pick('a2', a2, { optional: true, exclude: [a, b, b2] })),
+          h('span', { class: 'side' }, h('span', { class: 'key', style: `background:${seriesColor(0)}` }), pick('a', a, { exclude: [b, a2, b2] }), solo ? null : pick('a2', a2, { optional: true, exclude: [a, b, b2] })),
           h('span', { class: 'vs' }, 'gegen'),
-          h('span', { class: 'side' }, h('span', { class: 'key', style: `background:${seriesColor(1)}` }), pick('b', b, { exclude: [a, a2, b2] }), pick('b2', b2, { optional: true, exclude: [a, b, a2] }))),
-        (a2 && !b2) || (b2 && !a2) ? h('p', { class: 'chart-note' }, 'Für einen Teamvergleich auf beiden Seiten einen Partner wählen. Bis dahin werden die Einzelspieler verglichen.') : null);
+          h('span', { class: 'side' }, h('span', { class: 'key', style: `background:${seriesColor(1)}` }), pick('b', b, { exclude: [a, a2, b2] }), solo ? null : pick('b2', b2, { optional: true, exclude: [a, b, a2] }))),
+        absent.length ? modeNote(`${absent.map(id => c.names.get(id) ?? id).join(' und ')} ${absent.length === 1 ? 'hat' : 'haben'} noch kein ${MODE_WORD[c.mode]} gespielt; deshalb ist hier jemand anderes ausgewählt.`) : null,
+        solo && (c.params.a2 || c.params.b2) ? modeNote('Teamvergleiche gibt es nur in den Wertungen „Alle“ und „Doppel“.') : null,
+        (a2 && !b2) || (b2 && !a2) ? h('p', { class: 'chart-note' }, 'Für einen Teamvergleich auf beiden Seiten einen Partner wählen. Bis dahin werden die Einzelspieler verglichen.') : null,
+        h('nav', { class: 'links' }, [A, B].map(side => side.length === 2
+          ? h('a', { class: 'tap', ...linkTo(c, 'team', { a: side[0], b: side[1] }) }, `Team ${label(side)}`)
+          : h('a', { class: 'tap', ...linkTo(c, 'player', { id: side[0] }) }, `Profil von ${label(side)}`))));
 
       const d = duel(c.model, A, B);
       const games = c.model.dataset.games;
@@ -48,7 +56,8 @@ export default {
         tile({ label: 'Bilanz', value: `${d.aWins} : ${d.bWins}`, sub: d.games.length ? `${d.games.length} Begegnungen (${d.singles} Einzel, ${d.doubles} Doppel)` : 'Noch nie gegeneinander gespielt.' }),
         tile({ label: `Siegchance ${label(A)}`, value: fmt.pct(d.pA), sub: `laut Elo heute: ${fmt.elo(d.rA)} gegen ${fmt.elo(d.rB)}` }),
         tile({ label: 'Siegquote bisher', value: d.games.length ? fmt.pct(d.aWins / d.games.length) : '–', sub: `für ${label(A)}` }),
-        tile({ label: 'Letzte Begegnung', value: last ? fmt.date(games[last.g].t) : '–', sub: last ? `${last.aWon ? label(A) : label(B)} hat gewonnen` : '' })));
+        tile({ label: 'Letzte Begegnung', value: last ? fmt.date(games[last.g].t) : '–', sub: last ? `${last.aWon ? label(A) : label(B)} hat gewonnen` : '',
+          link: last ? linkTo(c, 'spiel', { ref: games[last.g].ref }) : null })));
 
       // Elo curves of everyone involved
       const ids = [...A, ...B];
@@ -67,19 +76,8 @@ export default {
 
       render(list, d.games.length ? [
         h('h2', {}, 'Alle Begegnungen'),
-        h('ol', { class: 'upsets duels' }, d.games.slice().reverse().map(({ g, aWon }) => {
-          const x = games[g];
-          const pA = aWon ? c.model.elo.perGame.eW[g] : 1 - c.model.elo.perGame.eW[g];
-          const delta = c.model.elo.perGame.delta[g];
-          return h('li', {},
-            h('span', { class: 'pct' }, aWon ? 'S' : 'N'),
-            h('span', { class: 'who' }, `${aWon ? label(A) : label(B)} gewinnt`),
-            h('span', { class: 'd ' + (aWon ? '' : 'down') }, fmt.signed(aWon ? delta : -delta, 1)),
-            h('span', { class: 'meta' }, `${x.approxTime ? 'ca. ' : ''}${fmt.date(x.t)}, ${x.double ? 'Doppel' : 'Einzel'}` +
-              (teams ? '' : x.double ? ` (${x.winners.concat(x.losers).filter(id => !ids.includes(id)).map(id => c.names.get(id)).join(' und ')} dabei)` : '') +
-              `, Siegchance ${label(A)} vorher ${fmt.pct(pA)}`));
-        })),
-        h('p', { class: 'chart-note' }, `S/N: Sieg oder Niederlage aus Sicht von ${label(A)}; daneben die Elo-Veränderung von ${label(A)}.`),
+        gameList(c, d.games.slice().reverse().map(({ g }) => g), { as: a }),
+        h('p', { class: 'chart-note' }, `S/N: Sieg oder Niederlage aus Sicht von ${c.names.get(a) ?? a}; rechts die eigene Elo-Veränderung.`),
       ] : null);
     }
     update(ctx);

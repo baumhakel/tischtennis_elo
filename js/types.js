@@ -23,6 +23,8 @@
  * @property {boolean} asymptotic_init
  * @property {number} asymptotic_init_rounds
  * @property {number} default_min_games
+ * @property {number} default_min_games_single
+ * @property {number} default_min_games_double
  * @property {number} default_inactivity_days
  */
 
@@ -46,6 +48,7 @@
  * @property {boolean} double
  * @property {boolean} approxTime  true for legacy (interpolated timestamps)
  * @property {number} [sourceRow]  legacy only: row in legacy_raw
+ * @property {boolean} [corrected] result swapped by a `corrections` row
  */
 
 /**

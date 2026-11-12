@@ -14,6 +14,7 @@ const svg = (tag, attrs = {}) => {
 // Layout physics (visual tuning of the drawing, not a statistic).
 const LAYOUT = { ticks: 300, charge: -260, collide: 30, minDist: 50, extraDist: 150, minStrength: 0.03, extraStrength: 0.7 };
 const layoutCache = new Map();
+const NEAR_W = 0.15;   // a selected node's neighbours: connections at least this strong stay bright (visual)
 
 /** Static force layout; cached per key. nodes: [{ k }], links: [{ i, j, w ∈ [0,1] }]. */
 async function layout(key, nodes, links) {
@@ -39,7 +40,9 @@ async function layout(key, nodes, links) {
 /**
  * @param {HTMLElement} el
  * @param {{ key: string, nodes: {k, label, color}[], layoutLinks: {i,j,w}[], edges: {i,j,w,sign}[],
- *           mode: 'undirected'|'directed'|'signed', edgeLabel: (e) => string }} spec
+ *           mode: 'undirected'|'directed'|'signed', edgeLabel: (e) => string, onSelect?: (k|null) => void }} spec
+ * Tapping a node highlights it and its edges (everything else dimmed) and calls onSelect(k);
+ * tapping the background or the same node again resets and calls onSelect(null).
  */
 export async function drawGraph(el, spec) {
   const pos = await layout(spec.key, spec.nodes, spec.layoutLinks);
@@ -53,6 +56,7 @@ export async function drawGraph(el, spec) {
   const ink = css('--ink'), pos1 = css('--div-pos'), neg = css('--div-neg');
   const R = 9, HEAD = 9;                              // node radius, arrowhead length (px in layout units)
   const edgesG = svg('g');
+  const edgeEls = [], nodeEls = [];
   for (const e of spec.edges.slice().sort((a, b) => a.w - b.w)) {
     const a = pos.get(e.i), b = pos.get(e.j);
     if (!a || !b) continue;
@@ -64,6 +68,7 @@ export async function drawGraph(el, spec) {
     const tipX = b.x - ux * (R + 2), tipY = b.y - uy * (R + 2);
     const directed = spec.mode === 'directed';
     const g = svg('g', { opacity });
+    edgeEls.push({ g, i: e.i, j: e.j, w: e.w, opacity });
     g.appendChild(svg('line', {
       x1: a.x + ux * R, y1: a.y + uy * R,
       x2: directed ? tipX - ux * HEAD * 0.8 : b.x - ux * R, y2: directed ? tipY - uy * HEAD * 0.8 : b.y - uy * R,
@@ -85,7 +90,8 @@ export async function drawGraph(el, spec) {
   const nodesG = svg('g');
   for (const n of spec.nodes) {
     const p = pos.get(n.k);
-    const g = svg('g', { class: 'node', transform: `translate(${p.x.toFixed(1)},${p.y.toFixed(1)})` });
+    const g = svg('g', { class: 'node', transform: `translate(${p.x.toFixed(1)},${p.y.toFixed(1)})`, 'data-k': n.k });
+    nodeEls.push({ g, k: n.k });
     g.appendChild(svg('circle', { r: R, fill: n.color }));
     const t = svg('text', { y: R + 14, 'text-anchor': 'middle' });
     t.textContent = n.label;
@@ -93,5 +99,26 @@ export async function drawGraph(el, spec) {
     nodesG.appendChild(g);
   }
   root.appendChild(nodesG);
+
+  let selected = null;
+  const select = k => {
+    selected = k;
+    const near = new Set([k]);
+    for (const e of edgeEls) {
+      const on = k == null || e.i === k || e.j === k;
+      if (k != null && on && e.w >= NEAR_W) { near.add(e.i); near.add(e.j); }
+      e.g.setAttribute('opacity', k == null ? e.opacity : on ? Math.max(0.35, Number(e.opacity)).toFixed(2) : '0.03');
+    }
+    for (const n of nodeEls) n.g.setAttribute('opacity', k == null || near.has(n.k) ? '1' : '0.25');
+    spec.onSelect?.(k);
+  };
+  if (spec.onSelect) {
+    root.style.cursor = 'pointer';
+    root.addEventListener('click', ev => {
+      const node = ev.target.closest('.node');
+      const k = node ? Number(node.getAttribute('data-k')) : null;
+      select(k === selected ? null : k);
+    });
+  }
   el.replaceChildren(root);
 }

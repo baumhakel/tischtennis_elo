@@ -4,7 +4,7 @@ import * as fmt from '../ui/format.js';
 import { seriesColor, css, withAlpha } from '../ui/colors.js';
 import { ratingSeries, smoothSeries, rangeStart, RANGES } from '../ui/series.js';
 import { lineChart } from '../ui/charts/line.js';
-import { focusLegend, tableView, viewHead, segmented, nameOf, X_AXIS_NAMES } from './common.js';
+import { focusLegend, tableView, viewHead, segmented, nameOf, X_AXIS_NAMES, profileLink } from './common.js';
 
 const RANGE_LABELS = { heute: 'Heute', aktuell: 'Aktuell', monat: 'Monat', jahr: 'Jahr', insgesamt: 'Gesamt' };
 
@@ -116,5 +116,5 @@ function summaryTable(ctx) {
   const ks = ctx.visible.shown.slice().sort((a, b) => elo.final[b] - elo.final[a]);
   return tableView('Als Tabelle anzeigen', ['Spieler', 'Elo', 'Höchste', 'Tiefste', 'Spiele'],
     ks.map(k => [nameOf(ctx, k), fmt.elo(elo.final[k]), fmt.elo(rec.highest[k]), fmt.elo(rec.lowest[k]), fmt.int(elo.played[k])]),
-    [1, 2, 3, 4]);
+    [1, 2, 3, 4], ks.map(k => profileLink(ctx, k)));
 }

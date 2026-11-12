@@ -11,6 +11,7 @@ import { parseHash, formatHash } from './app/url.js';
 import { createPipeline } from './app/pipeline.js';
 import { createRouter } from './app/router.js';
 import { createShell } from './ui/shell.js';
+import { modelFor } from './app/modes.js';
 
 const demoParam = new URLSearchParams(location.search).get('demo');
 const demo = demoParam !== null;
@@ -31,8 +32,9 @@ const store = createStore({ ...initialState(), ...parseHash(location.hash), auth
 const pipeline = createPipeline({ store, auth, fetchRaw, cache, now });
 
 const actions = {
-  navigate(view, params = {}) {
-    store.set({ view, params, replaceParams: true });
+  /** filters (optional): patch of the global filters, e.g. { focus: [...] } to highlight players. */
+  navigate(view, params = {}, filters = null) {
+    store.set({ view, params, replaceParams: true, ...(filters ? { filters } : {}) });
     document.getElementById('view')?.focus({ preventScroll: true });
     window.scrollTo(0, 0);
   },
@@ -61,14 +63,15 @@ const router = createRouter({
   el: shell.viewEl,
   renderEmpty: shell.renderEmpty,
   makeCtx(state) {
-    const model = state.data.model;
-    if (!model) return null;
-    const filters = resolveFilters(state.filters, model.dataset.config);
+    const base = state.data.model;
+    if (!base) return null;
+    const filters = resolveFilters(state.filters, base.dataset.config);
+    const model = modelFor(base, filters.mode);          // views only ever see the current mode's model
     const t = model.stats.now;
     const names = new Map([...model.dataset.players.values()].map(p => [p.id, clean(p.name)]));
     const vis = visible(model.dataset, model.elo, filters, t);
     return {
-      state, model, filters, params: state.params, now: t, names,
+      state, model, baseModel: base, mode: filters.mode, filters, params: state.params, now: t, names,
       visible: vis,
       focus: resolveFocus(filters, model.elo, vis, model.dataset.config),
       navigate: actions.navigate, setParams: actions.setParams, setFilters: actions.setFilters, actions,

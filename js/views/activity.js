@@ -4,7 +4,8 @@ import * as fmt from '../ui/format.js';
 import { sequential, css, onThemeChange } from '../ui/colors.js';
 import { showTip, hideTip } from '../ui/tooltip.js';
 import { serialToParts } from '../core/normalize.js';
-import { viewHead, nameOf, tableView } from './common.js';
+import { viewHead, nameOf, tableView, profileLink } from './common.js';
+import { formatRef } from '../core/normalize.js';
 
 const MONTHS = ['Jän', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
 
@@ -76,7 +77,7 @@ export default {
       render(scale, h('div', { class: 'scale' }, '0',
         h('span', { class: 'bar', style: `background:linear-gradient(90deg, ${[0, 0.25, 0.5, 0.75, 1].map(sequential).join(',')})` }),
         `${max} Spiele pro Woche`),
-        h('p', { class: 'chart-note' }, 'Die senkrechte Linie markiert den Start der Formulareinträge. Zeitpunkte davor sind geschätzt.'));
+        h('p', { class: 'chart-note' }, 'Tippe auf ein Feld für die Spiele dieser Woche, auf einen Namen für das Profil. Die senkrechte Linie markiert den Start der Formulareinträge; Zeitpunkte davor sind geschätzt.'));
     }
 
     canvas.addEventListener('pointermove', e => {
@@ -90,6 +91,22 @@ export default {
         h('div', {}, h('span', { class: 'val' }, `${v} ${v === 1 ? 'Spiel' : 'Spiele'}`), ' ', nameOf(current, k))], e.clientX, e.clientY);
     });
     canvas.addEventListener('pointerleave', hideTip);
+    // tap: a cell opens that player's games of that week, a name the profile
+    canvas.addEventListener('click', e => {
+      if (!geo) return;
+      const r = canvas.getBoundingClientRect();
+      const x = e.clientX - r.left, y = e.clientY - r.top;
+      const row = Math.floor((y - geo.top) / geo.rowH);
+      if (row < 0 || row >= geo.ks.length) return;
+      const k = geo.ks[row];
+      hideTip();
+      if (x < geo.labelW) return current.navigate('player', { id: current.model.elo.ids[k] });
+      const w = Math.floor((x - geo.labelW) / geo.cell);
+      if (w < 0 || w >= geo.W || !geo.act.counts[k][w]) return;
+      const day = t => formatRef(t).slice(0, 10);
+      current.navigate('spiele', { spieler: current.model.elo.ids[k], von: day(geo.act.weeks[w]), bis: day(geo.act.weeks[w] + 6) });
+    });
+    canvas.style.cursor = 'pointer';
 
     function update(c) {
       current = c;
@@ -100,7 +117,7 @@ export default {
       const activeWeeks = k => act.counts[k].reduce((a, v) => a + (v > 0 ? 1 : 0), 0);
       render(table, tableView('Als Tabelle anzeigen', ['Spieler', 'Spiele gesamt', 'Wochen mit Spielen', 'Spiele je aktiver Woche'],
         ks.map(k => [nameOf(c, k), fmt.int(c.model.elo.played[k]), String(activeWeeks(k)),
-          fmt.dec1(c.model.elo.played[k] / Math.max(1, activeWeeks(k)))]), [1, 2, 3]));
+          fmt.dec1(c.model.elo.played[k] / Math.max(1, activeWeeks(k)))]), [1, 2, 3], ks.map(k => profileLink(c, k))));
     }
     const ro = new ResizeObserver(() => draw());
     ro.observe(wrap);

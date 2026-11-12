@@ -2,12 +2,18 @@
 
 /**
  * Effective filters: values set by the user (URL / controls) win, otherwise the config tab.
- * @param {{minGames:number|null, inactivityDays:number|null, xAxis:string|null}} filters
+ * mode: 'alle' (default) | 'einzel' | 'doppel'; the min-games default depends on it
+ * (default_min_games, default_min_games_single, default_min_games_double).
+ * @param {{minGames:number|null, inactivityDays:number|null, xAxis:string|null, mode?:string|null}} filters
  * @param {import('../types.js').AppConfig} config
  */
 export function resolveFilters(filters, config) {
+  const mode = filters.mode === 'einzel' || filters.mode === 'doppel' ? filters.mode : 'alle';
+  const minDefault = mode === 'einzel' ? config.default_min_games_single
+    : mode === 'doppel' ? config.default_min_games_double : config.default_min_games;
   return {
-    minGames: filters.minGames ?? config.default_min_games,
+    mode,
+    minGames: filters.minGames ?? minDefault,
     inactivityDays: filters.inactivityDays ?? config.default_inactivity_days,
     xAxis: filters.xAxis ?? config.default_x_axis,
     focus: filters.focus ?? null,           // resolved against the data by resolveFocus()

@@ -51,7 +51,7 @@ export function focusLegend(ctx, { contextLabel = 'übrige Spieler' } = {}) {
     chips,
     picker,
     h('span', { class: 'note' }, h('span', { class: 'key', style: 'display:inline-block;width:14px;height:1px;background:var(--axis);vertical-align:middle;margin-right:6px' }), contextLabel),
-    !focus.explicit && focus.slotOf.size ? h('span', { class: 'note' }, `Vorauswahl: die ${focus.slotOf.size} Besten`) : null);
+    !focus.explicit && focus.slotOf.size ? h('span', { class: 'note' }, presetText(ctx, focus)) : null);
 }
 
 /**
@@ -90,8 +90,51 @@ export function tile({ label, value, who, sub, tone = null, onclick, link }) {
     sub ? h('span', { class: 't-sub' }, sub) : null);
 }
 
-export function viewHead(title, lead) {
-  return [h('div', { class: 'view-head' }, h('h2', {}, title)), lead ? h('p', { class: 'lead' }, lead) : null];
+/** „Vorauswahl: die 3 Besten“ or, with „Ich“ in slot 1, „Vorauswahl: du und die 3 Besten“. */
+function presetText(ctx, focus) {
+  const meK = ctx.me?.id != null ? ctx.model.elo.index.get(ctx.me.id) : undefined;
+  const mine = meK !== undefined && focus.slots[0] === meK;
+  const best = focus.slotOf.size - (mine ? 1 : 0);
+  const others = best > 0 ? `die ${best} Besten` : '';
+  return `Vorauswahl: ${mine ? (others ? `du und ${others}` : 'du') : others}`;
+}
+
+const openInfos = new Set();   // pages whose (i) is open survive re-renders
+
+/**
+ * Page head: title, an (i) next to it that unfolds a short explanation (no vertical space until
+ * tapped), at most a one-line lead, and „‹ Zurück“ on detail pages reached by a link.
+ * @param {string} title
+ * @param {string|Node|null} lead   one line at most
+ * @param {{ info?: string|Node|Array, back?: boolean, key?: string }} [o]
+ *   info: explanation (strings become paragraphs); key: identifies the page for the open state
+ */
+export function viewHead(title, lead = null, { info = null, back = false, key = title } = {}) {
+  const paras = info == null ? null : (Array.isArray(info) ? info : [info]).map(x => (typeof x === 'string' ? h('p', {}, x) : x));
+  const id = 'info-' + String(key).replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+  const open = openInfos.has(key);
+  const box = paras ? h('div', { class: 'info-box', id, hidden: !open }, paras) : null;
+  const btn = paras ? h('button', {
+    class: 'info-btn', type: 'button', 'aria-expanded': String(open), 'aria-controls': id, 'aria-label': 'Wie kommen diese Werte zustande?',
+    onclick: e => {
+      const now = box.hidden;
+      box.hidden = !now;
+      e.currentTarget.setAttribute('aria-expanded', String(now));
+      if (now) openInfos.add(key); else openInfos.delete(key);
+    },
+  }, 'i') : null;
+  return [
+    back ? h('button', { class: 'back-link', type: 'button', onclick: goBack }, '‹ Zurück') : null,
+    h('div', { class: 'view-head' }, h('h2', {}, title), btn),
+    box,
+    lead ? h('p', { class: 'lead' }, lead) : null,
+  ];
+}
+
+/** Back within the app if the previous entry is ours, otherwise to the Übersicht. */
+function goBack() {
+  if (history.state && history.state.inApp) history.back();
+  else location.hash = '#/dashboard';
 }
 
 /** Labelled select for view options; writes to the view params. */

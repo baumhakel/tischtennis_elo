@@ -9,6 +9,8 @@ import { ownRange } from './insights.js';
 import { formatRef } from '../core/normalize.js';
 import { opponents, partnersOf } from './duels.js';
 import { recentGames } from './games.js';
+import { earnedCard, newestOf, nextGoals, collectionLink, goalRow } from './badges.js';
+import { earnedCount, totalLevels } from './badge-defs.js';
 
 export default {
   id: 'player',
@@ -34,7 +36,10 @@ export default {
       if (k === undefined) k = c.focus.slots.find(x => x != null) ?? candidates[0];
       if (k === undefined) { render(head, h('p', { class: 'empty' }, 'Keine Spieler sichtbar.')); return; }
 
-      render(head, viewHead(nameOf(c, k)),
+      render(head, viewHead(nameOf(c, k), null, { key: 'player', info: [
+        'Treppenlinie: Elo-Wert nach jedem Spiel. Glatte Linie mit Band: geglätteter Verlauf (wie unter „Verlauf“, „Geglättet“).',
+        `Angst- und Lieblingsgegner: niedrigste und höchste Siegquote gegen jemanden, ab ${c.model.dataset.config.h2h_min_games} Begegnungen. Bester Partner: meiste Siege über Erwartung pro Doppel, ab ${c.model.dataset.config.team_min_games} gemeinsamen Doppeln.`,
+        'Tippe auf eine Kachel oder Zeile für die Spiele dahinter.'] }),
         h('div', { class: 'toolbar' },
           h('label', { for: 'pick-player' }, 'Spieler'),
           h('select', { id: 'pick-player', onchange: e => c.setParams({ id: e.target.value }) },
@@ -44,10 +49,10 @@ export default {
 
       const spec = curve(c, k);
       if (!chart) chart = lineChart(chartEl, spec); else chart.update(spec);
-      note.textContent = 'Treppenlinie: Elo-Wert nach jedem Spiel. Glatte Linie mit Band: geglätteter Verlauf (wie unter „Verlauf“, Ansicht „Geglättet“).';
+      note.textContent = '';
 
       recent.update(c, { as: elo.ids[k] });
-      render(rest, records(c, k), rivals(c, k), c.mode === 'einzel' ? null : partners(c, k));
+      render(rest, records(c, k), badgeSection(c, elo.ids[k]), rivals(c, k), c.mode === 'einzel' ? null : partners(c, k));
     }
     update(ctx);
     return { update, unmount() { chart?.destroy(); } };
@@ -127,6 +132,23 @@ function records(ctx, k) {
     tile({ label: 'Tage auf Platz 1', value: fmt.int(Math.round(r.leaderDays[k])), sub: `längste Serie: ${r.leaderRun[k]} Ligaspiele`, link: linkTo(ctx, 'rank', {}, { focus: [model.elo.ids[k]] }) }),
     tile({ label: 'Größter Gewinn in einem Spiel', value: fmt.signed(r.maxGain[k], 1), tone: 'up', sub: when(r.maxGainG[k]), link: game(r.maxGainG[k]) }),
   )];
+}
+
+/** Abzeichen: newest ones, the next goals, link to the whole collection. Counted over all games. */
+function badgeSection(ctx, id) {
+  const A = ctx.badges;
+  const head = h('h2', {}, 'Abzeichen');
+  if (!A) return [head, h('p', { class: 'muted' }, 'Werden berechnet …')];
+  const p = A.players.get(id);
+  if (!p) return null;
+  const cfg = ctx.baseModel.dataset.config;
+  const isMe = ctx.me?.id === id;
+  const goals = nextGoals(cfg, A, p, 2);
+  return [head,
+    h('p', { class: 'muted' }, `${earnedCount(p)} von ${totalLevels(A)} Stufen, gezählt über alle Spiele.`),
+    p.earned.length ? h('div', { class: 'earned-list' }, newestOf(p).slice(0, 3).map(e => earnedCard(ctx, A, e, { isNew: isMe && e.t > ctx.badgeSeen }))) : null,
+    goals.length ? h('ul', { class: 'goal-list' }, goals.map(x => h('li', {}, goalRow(ctx, A, x.b, x.pr)))) : null,
+    h('nav', { class: 'links' }, h('a', { class: 'tap', ...collectionLink(ctx, id) }, isMe ? 'Alle deine Abzeichen' : 'Alle Abzeichen'))];
 }
 
 function rivals(ctx, k) {

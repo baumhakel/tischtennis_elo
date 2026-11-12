@@ -34,7 +34,7 @@ function page(ctx) {
       : h('p', { class: 'muted' }, 'Gerade niemand.'),
   ];
   return [
-    viewHead('Serien', 'Wie viele Spiele in Folge jemand zuletzt gewonnen oder verloren hat. Tippe auf eine Zeile für die Spiele der Serie.'),
+    viewHead('Serien', 'Wer gerade gewinnt oder verliert.', { info: 'Wie viele Spiele in Folge jemand zuletzt gewonnen oder verloren hat, Einzel und Doppel zusammen (in den Wertungen „Einzel“ und „Doppel“ nur diese). Tippe auf eine Zeile für die Spiele der Serie.' }),
     section('Siegesserien', first(all.filter(s => s.win)), 'Siege in Folge'),
     section('Niederlagenserien', first(all.filter(s => !s.win)), 'Niederlagen in Folge'),
     h('nav', { class: 'links' }, h('a', { class: 'tap', ...linkTo(ctx, 'records') }, 'Die längsten Serien aller Zeiten: Rekorde')),

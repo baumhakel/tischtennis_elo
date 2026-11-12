@@ -37,12 +37,12 @@ export default {
           pool.filter(k => !exclude.includes(elo.ids[k]) || elo.ids[k] === value)
             .map(k => h('option', { value: elo.ids[k], selected: elo.ids[k] === value ? true : null }, nameOf(c, k))));
 
-      render(head, viewHead('Direktvergleich', 'Zwei Spieler oder zwei Doppelteams im Vergleich. Mit je einem Partner pro Seite zählen nur Spiele genau dieser beiden Teams; ohne Partner alle Spiele, in denen die beiden Gegner waren.'),
+      render(head, viewHead('Direktvergleich', null, { info: ['Zwei Spieler oder zwei Doppelteams im Vergleich. Mit je einem Partner pro Seite zählen nur Spiele genau dieser beiden Teams, ohne Partner alle Spiele, in denen die beiden Gegner waren.', 'Die Siegchance rechnet mit den heutigen Elo-Werten. In der Liste der Spiele: S = Sieg, N = Niederlage aus Sicht der linken Seite, rechts ihre Elo-Veränderung.'] }),
         h('div', { class: 'toolbar duel-pick' },
           h('span', { class: 'side' }, h('span', { class: 'key', style: `background:${seriesColor(0)}` }), pick('a', a, { exclude: [b, a2, b2] }), solo ? null : pick('a2', a2, { optional: true, exclude: [a, b, b2] })),
           h('span', { class: 'vs' }, 'gegen'),
           h('span', { class: 'side' }, h('span', { class: 'key', style: `background:${seriesColor(1)}` }), pick('b', b, { exclude: [a, a2, b2] }), solo ? null : pick('b2', b2, { optional: true, exclude: [a, b, a2] }))),
-        absent.length ? modeNote(`${absent.map(id => c.names.get(id) ?? id).join(' und ')} ${absent.length === 1 ? 'hat' : 'haben'} noch kein ${MODE_WORD[c.mode]} gespielt; deshalb ist hier jemand anderes ausgewählt.`) : null,
+        absent.length ? modeNote(`${absent.map(id => c.names.get(id) ?? id).join(' und ')} ${absent.length === 1 ? 'hat' : 'haben'} noch kein ${MODE_WORD[c.mode]} gespielt, deshalb ist hier jemand anderes ausgewählt.`) : null,
         solo && (c.params.a2 || c.params.b2) ? modeNote('Teamvergleiche gibt es nur in den Wertungen „Alle“ und „Doppel“.') : null,
         (a2 && !b2) || (b2 && !a2) ? h('p', { class: 'chart-note' }, 'Für einen Teamvergleich auf beiden Seiten einen Partner wählen. Bis dahin werden die Einzelspieler verglichen.') : null,
         h('nav', { class: 'links' }, [A, B].map(side => side.length === 2
@@ -77,7 +77,6 @@ export default {
       render(list, d.games.length ? [
         h('h2', {}, 'Alle Begegnungen'),
         gameList(c, d.games.slice().reverse().map(({ g }) => g), { as: a }),
-        h('p', { class: 'chart-note' }, `S/N: Sieg oder Niederlage aus Sicht von ${c.names.get(a) ?? a}; rechts die eigene Elo-Veränderung.`),
       ] : null);
     }
     update(ctx);

@@ -20,7 +20,7 @@ export default {
       const metric = metricById(c.params.metrik);
       const mode = c.params.darstellung === 'graph' ? 'graph' : 'matrix';
       const how = ['elo', 'name', 'cluster'].includes(c.params.ordnung) ? c.params.ordnung : 'elo';
-      render(head, viewHead('Matrix', metric.lead),
+      render(head, viewHead('Matrix', metric.lead, { info: ['Lesart: Zeile gegen Spalte. Leere Felder: Die beiden haben nie gegeneinander gespielt. Tippe auf ein Feld für den Direktvergleich, auf einen Namen für das Profil.', 'Im Netzwerk: Tippe auf einen Spieler, um seine Verbindungen hervorzuheben. Die Anordnung folgt der gewählten Kennzahl.'] }),
         h('div', { class: 'toolbar' },
           paramSelect(c, { label: 'Kennzahl', param: 'metrik', value: metric.id, options: METRICS.map(m => [m.id, m.label]) }),
           paramSelect(c, { label: 'Darstellung', param: 'darstellung', value: mode, options: [['matrix', 'Tabelle'], ['graph', 'Netzwerk']] }),
@@ -42,7 +42,7 @@ export default {
       const box = h('div', { class: 'graph chart' });
       const picked = h('div', { class: 'graph-pick' });
       const onSelect = k => render(picked, k == null
-        ? h('p', { class: 'chart-note' }, 'Tippe auf einen Spieler, um seine Verbindungen hervorzuheben.')
+        ? null
         : h('nav', { class: 'links' }, h('a', { class: 'tap', ...profileLink(c, k) }, `Profil von ${nameOf(c, k)}`)));
       onSelect(null);
       render(body, box, picked, h('p', { class: 'chart-note' }, graphNote(metric)));
@@ -68,6 +68,6 @@ export default {
 
 function graphNote(metric) {
   if (metric.graph === 'directed') return 'Pfeile zeigen vom überlegenen zum unterlegenen Spieler. Je deutlicher der Vorsprung, desto dicker und dunkler der Pfeil und desto näher liegen die beiden.';
-  if (metric.graph === 'signed') return 'Blau: spielen öfter gegeneinander als zufällig, rot: seltener. Je stärker die Abweichung, desto dicker die Linie; nur blaue Verbindungen ziehen die Punkte zusammen.';
+  if (metric.graph === 'signed') return 'Blau: spielen öfter gegeneinander als zufällig, rot: seltener. Je stärker die Abweichung, desto dicker die Linie. Nur blaue Verbindungen ziehen die Punkte zusammen.';
   return 'Je größer der Wert, desto dicker und dunkler die Linie und desto näher liegen die beiden Spieler.';
 }

@@ -40,19 +40,18 @@ function page(ctx) {
   const players = r.players.filter(p => ctx.visible.listed.includes(p.k));
 
   return [
-    viewHead(`Siegchance ${range}`, `Alle ${KINDS[kind] ? KINDS[kind] + ' ' : ''}Spiele, in denen eine Seite vor dem Spiel laut Elo eine Siegchance von ${range} hatte${role ? ` (also ${role})` : ''}. Gewinnen diese Seiten so oft, wie Elo vorhersagt, und wer schlägt die Erwartung?`),
+    viewHead(`Siegchance ${range}`, `Gewinnen Seiten mit dieser Chance so oft, wie Elo sagt?`, { back: true, info: [`Alle ${KINDS[kind] ? KINDS[kind] + ' ' : ''}Spiele, in denen eine Seite vor dem Spiel laut Elo eine Siegchance von ${range} hatte${role ? ` (also ${role})` : ''}. Gleiche Einteilung wie in der Kalibrierung.`, 'Pro Spieler: Siege minus erwartete Siege in diesem Bereich. Im Doppel zählt jedes Spiel für beide Partner. Tippe auf eine Zeile für die Spiele.'] }),
     h('div', { class: 'pager' },
       prev ? h('a', { class: 'secondary-btn', ...prev }, '‹ Niedriger') : h('span'),
       next ? h('a', { class: 'secondary-btn', ...next }, 'Höher ›') : h('span')),
     r.sides
       ? [h('div', { class: 'tiles' },
-          tile({ label: 'Spiele', value: fmt.int(r.games), sub: r.sides === r.games ? 'alle ansehen' : `${fmt.int(r.sides)} Seiten in diesem Bereich; alle ansehen`,
+          tile({ label: 'Spiele', value: fmt.int(r.games), sub: r.sides === r.games ? 'alle ansehen' : `${fmt.int(r.sides)} Seiten in diesem Bereich, alle ansehen`,
             link: linkTo(ctx, 'spiele', { chance: chanceParam, art: ART[kind] }) }),
           tile({ label: 'Erwartete Siege', value: fmt.pct(r.expected / r.sides), sub: `${fmt.dec1(r.expected)} von ${fmt.int(r.sides)}` }),
           tile({ label: 'Tatsächliche Siege', value: fmt.pct(r.actual / r.sides), sub: `${fmt.int(r.actual)} von ${fmt.int(r.sides)}` }),
           tile({ label: 'Über Erwartung', value: sgn(r.actual - r.expected), tone: r.actual - r.expected > 0.5 ? 'up' : r.actual - r.expected < -0.5 ? 'down' : null, sub: 'Siege insgesamt' })),
         h('h2', {}, `Wer schlägt die Erwartung${role ? ' ' + role : ''}?`),
-        h('p', { class: 'lead' }, 'Siege minus erwartete Siege in diesem Bereich, pro Spieler. Im Doppel zählt jedes Spiel für beide Partner. Tippe auf eine Zeile für die Spiele.'),
         plainTable(['Spieler', 'Spiele', 'Erwartet', 'Gewonnen', 'Über Erwartung'],
           players.map(p => [nameOf(ctx, p.k), String(p.n), fmt.dec1(p.expected), String(p.actual),
             h('span', { class: p.diff > 0.5 ? 'up' : p.diff < -0.5 ? 'down' : null }, sgn(p.diff))]),

@@ -31,10 +31,10 @@ export default {
       const teams = bestTeams(c.model, ks, cfg.team_min_games);
       const team = (i, j) => linkTo(c, 'team', { a: c.model.elo.ids[i], b: c.model.elo.ids[j] });
       render(el,
-        viewHead('Doppelpartner', metric.lead),
+        viewHead('Doppelpartner', metric.lead, { info: 'Lesart: Zeile mit Spalte. Leere Felder: Die beiden haben nie zusammen gespielt. Tippe auf ein Feld oder ein Team für die Teamseite.' }),
         h('div', { class: 'toolbar' }, paramSelect(c, { label: 'Kennzahl', param: 'metrik', value: metric.id, options: METRICS.map(m => [m.id, m.label]) })),
         ks.length < 2 ? h('p', { class: 'empty' }, 'Zu wenige Doppelspieler sichtbar.')
-          : matrixTable(c, P[metric.stat], n, ks, { ...metric, note: 'Lesart: Zeile mit Spalte. Leere Felder: Die beiden haben nie zusammen gespielt. Tippe auf ein Feld für das Team.' },
+          : matrixTable(c, P[metric.stat], n, ks, metric,
               { cell: (i, j) => team(i, j), head: k => profileLink(c, k) }),
         h('h2', {}, 'Teams'),
         teams.length

@@ -9,7 +9,7 @@ import { gameList } from './games.js';
 import { serialFromParts } from '../core/normalize.js';
 
 const SORT_LABELS = { neu: 'Neueste zuerst', alt: 'Älteste zuerst', elo: 'Größte Elo-Veränderung zuerst' };
-const ART_LABELS = { '': 'Alle', einzel: 'Einzel', doppel: 'Doppel' };
+const ART_LABELS = { '': 'Einzel und Doppel', einzel: 'nur Einzel', doppel: 'nur Doppel' };
 
 export default {
   id: 'spiele',
@@ -26,7 +26,7 @@ export default {
       if (k !== key) { key = k; shown = page; }
       const gs = queryGames(c.model, f);
       render(el,
-        viewHead('Alle Spiele', lead(c, f, gs.length)),
+        viewHead('Alle Spiele', lead(c, f, gs.length), { back: hasFilter(f), info: 'Tippe auf ein Spiel für die Einzelheiten. Mit gewähltem Spieler: S = Sieg, N = Niederlage, rechts die eigene Elo-Veränderung. Filter, die über einen Link kamen, stehen als Chips darunter; × entfernt sie.' }),
         controls(c, f),
         chips(c, f),
         gs.length
@@ -48,8 +48,7 @@ export default {
 
 function lead(ctx, f, n) {
   const s = `${fmt.int(n)} ${n === 1 ? 'Spiel' : 'Spiele'}`;
-  if (!f.spieler) return `${s}. Tippe auf ein Spiel für die Einzelheiten.`;
-  return `${s}, aus Sicht von ${ctx.names.get(f.spieler)}: S = Sieg, N = Niederlage, rechts die eigene Elo-Veränderung.`;
+  return f.spieler ? `${s}, aus Sicht von ${ctx.names.get(f.spieler)}.` : `${s}.`;
 }
 
 function controls(ctx, f) {
@@ -69,12 +68,12 @@ function controls(ctx, f) {
     h('span', { class: 'field' }, sel('Spieler', 'spieler', f.spieler, [], 'alle')),
     f.spieler ? h('span', { class: 'field' }, sel('Gegner', 'gegner', f.gegner, [f.spieler, f.partner], 'alle')) : null,
     f.spieler && ctx.mode !== 'einzel' ? h('span', { class: 'field' }, sel('Partner', 'partner', f.partner, [f.spieler, f.gegner], 'alle')) : null,
-    ctx.mode !== 'alle' ? null : h('div', { class: 'seg', role: 'radiogroup', 'aria-label': 'Spielart' },
-      Object.entries(ART_LABELS).map(([v, t]) => h('label', {},
-        h('input', { type: 'radio', name: 'g-art', value: v, checked: (f.art || '') === v ? true : null,
-          disabled: f.partner && v !== 'doppel' ? true : null,
-          onchange: () => set({ art: v || null }) }),
-        h('span', {}, t)))),
+    // a select, not buttons: must not look like the Wertung switch
+    ctx.mode !== 'alle' ? null : h('span', { class: 'field' },
+      h('label', { for: 'g-art' }, 'Spielart'),
+      h('select', { id: 'g-art', onchange: e => set({ art: e.target.value || null }) },
+        Object.entries(ART_LABELS).map(([v, t]) => h('option', { value: v, selected: (f.art || '') === v ? true : null,
+          disabled: f.partner && v !== 'doppel' ? true : null }, t)))),
     h('span', { class: 'field' },
       h('label', { for: 'g-sort' }, 'Reihenfolge'),
       h('select', { id: 'g-sort', onchange: e => set({ sortierung: e.target.value === 'neu' ? null : e.target.value }) },

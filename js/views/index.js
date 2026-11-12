@@ -1,11 +1,12 @@
-// View registry. `nav` = shown in the bottom bar; every view except `menu: false` is listed under "Mehr".
+// View registry. The bottom bar (ui/shell.js) shows Übersicht · Profil · Entdecken; the Entdecken hub
+// (views/entdecken.js) groups the other views. `menu: false` = only reached by links.
 // Views are loaded on first use (dynamic import), so the first screen only loads what it needs.
 
 export const VIEWS = [
-  { id: 'dashboard',   title: 'Übersicht',        nav: true,  load: () => import('./dashboard.js') },
-  { id: 'history',     title: 'Verlauf',          nav: true,  load: () => import('./history.js') },
-  { id: 'matrix',      title: 'Matrix',           nav: true,  load: () => import('./matrix.js') },
-  { id: 'records',     title: 'Rekorde',          nav: true,  load: () => import('./records.js') },
+  { id: 'dashboard',   title: 'Übersicht',        load: () => import('./dashboard.js') },
+  { id: 'history',     title: 'Verlauf',          load: () => import('./history.js') },
+  { id: 'matrix',      title: 'Matrix',           load: () => import('./matrix.js') },
+  { id: 'records',     title: 'Rekorde',          load: () => import('./records.js') },
   { id: 'rank',        title: 'Rangverlauf',                  load: () => import('./rank.js') },
   { id: 'movement',    title: 'Elo-Bewegung',                 load: () => import('./movement.js') },
   { id: 'spiele',      title: 'Alle Spiele',                 load: () => import('./games-all.js') },
@@ -21,7 +22,11 @@ export const VIEWS = [
   { id: 'partners',    title: 'Doppelpartner',                load: () => import('./partners.js') },
   { id: 'calibration', title: 'Kalibrierung',                 load: () => import('./calibration.js') },
   { id: 'data',        title: 'Daten und Hinweise',           load: () => import('./data.js') },
-  { id: 'more',        title: 'Mehr',             nav: true,  load: () => import('./more.js') },
+  { id: 'tisch',       title: 'Tisch',                        load: () => import('./table.js') },
+  { id: 'abzeichen',   title: 'Abzeichen',                    load: () => import('./badges.js') },
+  { id: 'ruhmeshalle', title: 'Ruhmeshalle',                  load: () => import('./hall.js') },
+  { id: 'entdecken',   title: 'Entdecken',                    load: () => import('./entdecken.js') },
+  { id: 'more',        title: 'Entdecken',        menu: false, load: () => import('./entdecken.js') },   // old links
 ];
 
 export const viewById = id => VIEWS.find(v => v.id === id);

@@ -14,7 +14,7 @@ export default {
     render(el, head, legend, chartEl, note, table);
     let chart = null;
     function update(c) {
-      render(head, viewHead('Rangverlauf', `Platzierung nach jedem Spiel. In der Rangliste steht, wer zu diesem Zeitpunkt mindestens ${c.filters.minGames} Spiele hatte.`));
+      render(head, viewHead('Rangverlauf', null, { info: `Platz nach jedem Spiel. In der Rangliste steht, wer zu diesem Zeitpunkt mindestens ${c.filters.minGames} Spiele hatte. Bei Gleichstand teilen sich die Spieler den besseren Platz.` }));
       render(legend, focusLegend(c));
       const axis = c.filters.xAxis === 'own' ? 'game' : c.filters.xAxis;
       const context = c.visible.shown.filter(k => !c.focus.slotOf.has(k));

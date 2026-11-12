@@ -38,5 +38,5 @@ export function matrixTable(ctx, M, n, ks, metric, links = null) {
         h('span', { class: 'bar', style: `background:linear-gradient(90deg, ${[-1, -0.5, 0, 0.5, 1].map(diverging).join(',')})` }),
         metric.fmt((metric.mid ?? 0) + maxAbs));
   return [h('div', { class: 'matrix-wrap' }, table), scale,
-    h('p', { class: 'chart-note' }, metric.note || 'Lesart: Zeile gegen Spalte. Leere Felder: Die beiden haben nie gegeneinander gespielt.')];
+    metric.note ? h('p', { class: 'chart-note' }, metric.note) : null];   // the reading guide lives in the page's (i)
 }

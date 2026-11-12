@@ -21,11 +21,12 @@ export default {
       const axis = c.filters.xAxis === 'own' ? 'game' : c.filters.xAxis;
       const s = movementSeries(c.model, axis);
       const { mv } = s;
-      render(head, viewHead('Elo-Bewegung',
-        `Wie viele Elo-Punkte pro Spiel den Besitzer wechseln, gemittelt über die jeweils letzten ${cfg.movement_window} Spiele. Das graue Band zeigt den üblichen Bereich (${cfg.movement_calm_percentile}. bis ${cfg.movement_turbulent_percentile}. Perzentil): Darüber ist es turbulent, darunter ruhig.`));
+      render(head, viewHead('Elo-Bewegung', 'Wie unruhig die Liga gerade ist.', { info: [
+        `Wie viele Elo-Punkte pro Spiel den Besitzer wechseln, gemittelt über die jeweils letzten ${cfg.movement_window} Spiele. Das graue Band zeigt den üblichen Bereich (${cfg.movement_calm_percentile}. bis ${cfg.movement_turbulent_percentile}. Perzentil aller bisherigen Werte): darüber turbulent, darunter ruhig.`,
+        'Vor dem Start der Formulareinträge sind die Zeitpunkte geschätzt.'] }));
       render(tiles,
         tile({ label: 'Gerade', value: LEVEL[mv.level] || '–', sub: Number.isFinite(mv.percentile) ? `bewegter als ${Math.round(mv.percentile)} % der bisherigen Zeit` : 'Noch zu wenige Spiele.' }),
-        tile({ label: 'Aktueller Mittelwert', value: fmt.dec1(mv.current), sub: `Elo-Punkte pro Spiel; die letzten ${cfg.movement_window} Spiele ansehen`,
+        tile({ label: 'Aktueller Mittelwert', value: fmt.dec1(mv.current), sub: `Elo-Punkte pro Spiel – die letzten ${cfg.movement_window} Spiele ansehen`,
           link: linkTo(c, 'spiele', { letzte: String(cfg.movement_window), sortierung: 'elo' }) }),
         tile({ label: 'Ruhig bis', value: fmt.dec1(mv.calmAt), sub: `${cfg.movement_calm_percentile}. Perzentil` }),
         tile({ label: 'Turbulent ab', value: fmt.dec1(mv.turbulentAt), sub: `${cfg.movement_turbulent_percentile}. Perzentil` }));
@@ -41,7 +42,7 @@ export default {
         bands: [{ upper: 0, lower: 1, color: withAlpha(css('--axis'), 0.18) }],
       };
       if (!chart) chart = lineChart(chartEl, spec); else chart.update(spec);
-      note.textContent = 'Vor dem Start der Formulareinträge sind die Zeitpunkte geschätzt.';
+      note.textContent = '';
       render(table, tableView('Als Tabelle anzeigen', ['Kennzahl', 'Elo-Punkte pro Spiel'], [
         ['Aktueller Mittelwert', fmt.dec1(mv.current)],
         [`${cfg.movement_calm_percentile}. Perzentil`, fmt.dec1(mv.calmAt)],

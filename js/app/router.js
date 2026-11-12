@@ -25,9 +25,9 @@ export function createRouter({ store, el, makeCtx, renderEmpty }) {
       last = {};
       return;
     }
-    const deps = { model: state.data.model, filters: state.filters, params: state.params };
+    const deps = { model: state.data.model, filters: state.filters, params: state.params, me: state.me, email: state.auth.email, badges: state.data.badgesFor };
     if (mounted && mounted.id === def.id) {
-      if (deps.model !== last.model || deps.filters !== last.filters || deps.params !== last.params) {
+      if (deps.model !== last.model || deps.filters !== last.filters || deps.params !== last.params || deps.me !== last.me || deps.email !== last.email || deps.badges !== last.badges) {
         mounted.instance.update?.(ctx);
       }
       last = deps;
@@ -54,7 +54,7 @@ export function createRouter({ store, el, makeCtx, renderEmpty }) {
     el.removeAttribute('aria-busy');
     const fresh = store.get();
     mounted = { id: def.id, instance: view.mount(el, makeCtx(fresh) || ctx) };
-    last = { model: fresh.data.model, filters: fresh.filters, params: fresh.params };
+    last = { model: fresh.data.model, filters: fresh.filters, params: fresh.params, me: fresh.me, email: fresh.auth.email, badges: fresh.data.badgesFor };
     document.title = `${def.title} – Tischtennis Elo`;
   }
 

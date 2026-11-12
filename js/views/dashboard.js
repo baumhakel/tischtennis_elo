@@ -1,4 +1,4 @@
-// Übersicht: highlight tiles, recent Elo curves, last games, leaderboard.
+// Übersicht: „Ich“ card (or „Wer bist du?“), highlight tiles, recent Elo curves, last games, leaderboard.
 import { h, render } from '../ui/dom.js';
 import * as fmt from '../ui/format.js';
 import { seriesColor, seriesVar, css } from '../ui/colors.js';
@@ -6,6 +6,8 @@ import { ratingSeries, recentStart } from '../ui/series.js';
 import { lineChart } from '../ui/charts/line.js';
 import { focusLegend, tile, nameOf, linkTo } from './common.js';
 import { recentGames } from './games.js';
+import { SNOOZE_DAYS } from '../app/me.js';
+import { earnedCard, newestOf, collectionLink } from './badges.js';
 
 export default {
   id: 'dashboard',
@@ -16,11 +18,13 @@ export default {
     const chartEl = h('div');
     const note = h('p', { class: 'chart-note' });
     const board = h('div');
+    const meBox = h('div');
     const recent = recentGames();
-    render(el, tiles, h('h2', {}, 'Aktueller Verlauf'), legend, chartEl, note, recent.el, board);
+    render(el, meBox, tiles, h('h2', {}, 'Aktueller Verlauf'), legend, chartEl, note, recent.el, board);
     let chart = null;
 
     function update(c) {
+      render(meBox, c.me.ask ? askCard(c) : c.me.id ? [meCard(c), meBadge(c)] : null);
       render(tiles, highlights(c));
       render(legend, focusLegend(c));
       const spec = curves(c);
@@ -34,6 +38,72 @@ export default {
   },
 };
 
+// ───────── „Ich“ ─────────
+
+/** „Wer bist du?“: never a dialog; stays until answered or snoozed. */
+function askCard(ctx) {
+  const set = patch => ctx.actions.setMe({ ...ctx.state.me, ...patch });
+  const players = [...ctx.baseModel.dataset.players.values()].sort((a, b) => a.name.localeCompare(b.name, 'de'));
+  const sel = h('select', { 'aria-label': 'Spieler' }, h('option', { value: '' }, 'Spieler wählen …'),
+    players.map(p => h('option', { value: p.id }, p.name)));
+  return h('section', { class: 'me-card ask' },
+    h('h2', {}, 'Wer bist du?'),
+    h('p', {}, 'Dann zeigt die Übersicht zuerst deinen Platz und deinen Abstand nach oben. Wird nur auf diesem Gerät gespeichert.'),
+    h('div', { class: 'menu-actions' }, sel,
+      h('button', { type: 'button', class: 'small', onclick: () => { if (sel.value) set({ choice: 'player', id: sel.value }); } }, 'Das bin ich'),
+      h('button', { type: 'button', class: 'secondary small', onclick: () => set({ choice: 'observer', id: null }) }, 'Ich schaue nur zu'),
+      h('button', { type: 'button', class: 'link', onclick: () => set({ snoozeUntil: Date.now() + SNOOZE_DAYS * 864e5 }) }, 'Später')));
+}
+
+/** Newest Abzeichen under the „Ich“ card; „neu“ if earned since the app was last opened. No pop-ups. */
+function meBadge(ctx) {
+  const p = ctx.badges?.players.get(ctx.me.id);
+  if (!p?.earned.length) return null;
+  const fresh = newestOf(p, ctx.badgeSeen);
+  const e = p.earned.at(-1);
+  return h('div', { class: 'me-badge' },
+    earnedCard(ctx, ctx.badges, e, { isNew: fresh.length > 0 }),
+    h('a', { class: 'me-badge-more', ...collectionLink(ctx, ctx.me.id) },
+      fresh.length > 1 ? `${fresh.length - 1} weitere neu · alle Abzeichen` : 'Alle deine Abzeichen'));
+}
+
+/** Personal card: Platz in the current Wertung, distance up and down, streak. Tappable → my profile. */
+function meCard(ctx) {
+  const { model, visible, filters, me } = ctx;
+  const id = me.id, k = model.elo.index.get(id);
+  const name = ctx.names.get(id) ?? id;
+  const link = linkTo(ctx, 'player', { id });
+  const word = { einzel: 'Im Einzel', doppel: 'Im Doppel', alle: '' }[ctx.mode];
+  if (k === undefined) {
+    return h('a', { class: 'me-card tap', ...link }, h('span', { class: 'me-name' }, name),
+      h('span', { class: 'me-line' }, `${word} hast du noch nicht gespielt.`));
+  }
+  const elo = model.elo;
+  const rating = elo.final[k];
+  const ranked = model.stats.get('leaderboard').filter(r => visible.isShown(r.k)).map(r => r.k);
+  const pos = ranked.indexOf(k);
+  const form = model.stats.get('form');
+  const streak = form.streak[k];
+  let line, sub = null;
+  if (visible.inactive.has(k)) {
+    line = `${word ? word + ': s' : 'S'}eit über ${filters.inactivityDays} Tagen kein Spiel – deshalb nicht in der Rangliste.`;
+  } else if (visible.provisional.has(k)) {
+    line = `${word ? word + ' bist du' : 'Du bist'} noch vorläufig: ${elo.played[k]} von ${filters.minGames} Spielen.`;
+  } else {
+    line = `Platz ${pos + 1} von ${ranked.length}${word ? ' ' + word.replace('Im ', 'im ') : ''}`;
+    const up = pos > 0 ? Math.max(1, Math.ceil(elo.final[ranked[pos - 1]] - rating)) : null;
+    const down = pos < ranked.length - 1 ? Math.floor(rating - elo.final[ranked[pos + 1]]) : null;
+    sub = [up != null ? `noch ${up} ${up === 1 ? 'Punkt' : 'Punkte'} bis Platz ${pos}` : 'ganz vorne',
+      down != null ? `${down} ${down === 1 ? 'Punkt' : 'Punkte'} Vorsprung auf Platz ${pos + 2}` : null].filter(Boolean).join(' · ');
+  }
+  const streakText = streak > 1 ? `${streak} Siege in Folge` : streak < -1 ? `${-streak} Niederlagen in Folge` : streak > 0 ? 'zuletzt gewonnen' : streak < 0 ? 'zuletzt verloren' : null;
+  return h('a', { class: 'me-card tap', ...link },
+    h('span', { class: 'me-top' }, h('span', { class: 'me-name' }, name), h('span', { class: 'me-elo' }, fmt.elo(rating))),
+    h('span', { class: 'me-line' }, line),
+    sub ? h('span', { class: 'me-sub' }, sub) : null,
+    streakText ? h('span', { class: 'me-sub' }, streakText) : null);
+}
+
 // ───────── highlight tiles ─────────
 
 function highlights(ctx) {
@@ -41,7 +111,7 @@ function highlights(ctx) {
   const { config, games } = model.dataset;
   const ok = k => visible.isShown(k);   // provisional and inactive players are not eligible
 
-  const week = d => (d === 7 ? 'der Woche' : `(${d} Tage)`);
+  const week = d => `(letzte ${d} Tage)`;   // rolling; the badge „Aufsteiger der Woche“ uses calendar weeks
   const rs = model.stats.get('risingStar').filter(r => ok(r.k))[0];
   const rising = rs
     ? tile({ label: `Aufsteiger ${week(config.rising_star_days)}`, value: fmt.signed(rs.delta), tone: rs.delta > 0 ? 'up' : 'down',
@@ -121,7 +191,7 @@ function leaderboard(ctx) {
     const prov = visible.provisional.has(r.k);
     if (!prov) rank++;
     const slot = focus.slotOf.get(r.k);
-    return h('tr', { class: 'tap-row' + (prov ? ' provisional' : ''), onclick: () => navigate('player', { id: r.id }) },
+    return h('tr', { class: 'tap-row' + (prov ? ' provisional' : '') + (r.id === ctx.me.id ? ' me' : ''), onclick: () => navigate('player', { id: r.id }) },
       h('td', { class: 'rank' }, prov ? '' : String(rank)),
       h('td', { class: 'name' },
         h('span', { class: 'player' },

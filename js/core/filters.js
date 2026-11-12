@@ -29,13 +29,15 @@ export const MAX_FOCUS = 8;   // = categorical palette size (design limit, not a
  * @returns {{ slots: (number|null)[], slotOf: Map<number, number>, explicit: boolean }}
  *   slots[i] = player k in colour slot i (0-based) or null; slotOf: k → slot
  */
-export function resolveFocus(f, elo, vis, config) {
+export function resolveFocus(f, elo, vis, config, meId = null) {
   let ids;
   const explicit = Array.isArray(f.focus);
   if (explicit) ids = f.focus.slice(0, MAX_FOCUS);
   else {
     ids = [...vis.shown].sort((a, b) => elo.final[b] - elo.final[a])
       .slice(0, Math.min(MAX_FOCUS, config.focus_default_count)).map(k => elo.ids[k]);
+    // „Ich“ always gets slot 1 (unless highlighting was set explicitly); the best players follow
+    if (meId && elo.index.has(meId)) ids = [meId, ...ids.filter(id => id !== meId)].slice(0, MAX_FOCUS);
   }
   const slots = ids.map(id => {
     const k = id == null ? undefined : elo.index.get(id);

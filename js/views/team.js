@@ -21,7 +21,7 @@ function page(ctx) {
   const { model } = ctx;
   const { elo } = model;
   const cfg = model.dataset.config;
-  if (ctx.mode === 'einzel') return [viewHead('Team'), modeNote('Teams gibt es nur in den Wertungen „Alle“ und „Doppel“.')];
+  if (ctx.mode === 'einzel') return [viewHead('Team', null, { back: true }), modeNote('Teams gibt es nur in den Wertungen „Alle“ und „Doppel“.')];
   const pool = byName(ctx, elo.ids.map((_, k) => k).filter(k => elo.doubles[k] > 0));
   if (pool.length < 2) return [viewHead('Team'), h('p', { class: 'empty' }, 'Noch zu wenige Doppel gespielt.')];
   const valid = id => id && elo.index.has(id) && elo.doubles[elo.index.get(id)] > 0;
@@ -43,7 +43,7 @@ function page(ctx) {
     pool.filter(k => elo.ids[k] !== other).map(k => h('option', { value: elo.ids[k], selected: elo.ids[k] === value ? true : null }, nameOf(ctx, k))));
   const names = `${nameOf(ctx, ka)} & ${nameOf(ctx, kb)}`;
   const head = [
-    viewHead('Team', 'Zwei Spieler, die zusammen Doppel spielen. Ein Team hat keinen eigenen Elo-Wert: Jeder behält seinen eigenen, die Stärke des Teams ist der Mittelwert der beiden.'),
+    viewHead('Team', null, { back: true, info: ['Zwei Spieler, die zusammen Doppel spielen. Ein Team hat keinen eigenen Elo-Wert: Jeder behält seinen eigenen, die Stärke des Teams ist der Mittelwert der beiden.', 'Siege über Erwartung: Siege minus die Summe der Siegchancen vor jedem gemeinsamen Doppel. Positiv heißt, die beiden gewinnen öfter, als ihre Elo-Werte erwarten lassen.'] }),
     h('div', { class: 'toolbar duel-pick' }, h('span', { class: 'side' }, pick('a', a, b), h('span', { class: 'vs' }, 'und'), pick('b', b, a))),
     h('nav', { class: 'links' },
       h('a', { class: 'tap', ...profileLink(ctx, ka) }, `Profil von ${nameOf(ctx, ka)}`),
@@ -60,7 +60,7 @@ function page(ctx) {
       tile({ label: 'Doppel zusammen', value: fmt.int(t.n), sub: `Bilanz ${t.wins} : ${t.losses}`, link: linkTo(ctx, 'spiele', { spieler: a, partner: b }) }),
       tile({ label: 'Siegquote', value: fmt.pct(t.ratio), sub: 'zusammen' }),
       tile({ label: 'Siege über Erwartung', value: sgn(t.chem), tone: t.chem > 0.05 ? 'up' : t.chem < -0.05 ? 'down' : null,
-        sub: `${sgn(t.perGame)} pro Doppel; Erwartung laut Elo vor jedem Spiel` }),
+        sub: `${sgn(t.perGame)} pro Doppel (Erwartung laut Elo vor jedem Spiel)` }),
       tile({ label: 'Teamstärke heute', value: fmt.elo(strength), sub: `${fmt.elo(elo.final[ka])} und ${fmt.elo(elo.final[kb])}` })),
     h('h2', {}, 'Gegnerteams'),
     plainTable(['Gegner', 'Doppel', 'Bilanz'],

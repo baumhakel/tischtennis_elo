@@ -76,7 +76,7 @@ function page(ctx) {
 
   const sorted = ks.slice().sort((a, b) => elo.final[b] - elo.final[a]);
   return h('div', { class: 'records' },
-    viewHead('Rekorde', `Rekorde aus allen Spielen. Berücksichtigt werden Spieler mit mindestens ${filters.minGames} Spielen; auch bei den Platz-Rekorden zählt der Rang erst ab dieser Zahl. Bei den Altdaten sind die Daten geschätzt („ca.“).`),
+    viewHead('Rekorde', null, { info: [`Berücksichtigt werden Spieler mit mindestens ${filters.minGames} Spielen. Auch bei den Platz-Rekorden zählt der Rang erst ab dieser Zahl.`, 'Bei den Altdaten sind die Daten geschätzt („ca.“). Tippe auf einen Rekord für das Spiel oder die Spiele dahinter.'] }),
     h('div', { class: 'tiles' }, T),
     tableView('Alle Spieler als Tabelle anzeigen', ['Spieler', 'Höchster', 'Tiefster', 'Siegesserie', 'Niederlagenserie', 'Tage auf Platz 1'],
       sorted.map(k => [who(k), fmt.elo(r.highest[k]), fmt.elo(r.lowest[k]), String(r.longestWin[k]), String(r.longestLoss[k]), String(Math.round(r.leaderDays[k]))]),

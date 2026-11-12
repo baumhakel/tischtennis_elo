@@ -5,6 +5,7 @@ import * as fmt from '../ui/format.js';
 import { tile, viewHead, modeNote, MODE_WORD } from './common.js';
 import { findGame, gameFacts, sameRefCount } from './game-query.js';
 import { linkTo, gameLink } from './games.js';
+import { earnedInGame } from './badges.js';
 
 export default {
   id: 'spiel',
@@ -26,7 +27,7 @@ function page(ctx) {
     if (bg >= 0) {
       const y = ctx.baseModel.dataset.games[bg];
       const who = ids => ids.map(id => ctx.names.get(id) ?? id).join(' & ');
-      return [viewHead(`${y.double ? 'Doppel' : 'Einzel'}, ${y.approxTime ? `ca. ${fmt.date(y.t)}` : `${fmt.date(y.t)}, ${fmt.time(y.t)} Uhr`}`),
+      return [viewHead(`${y.double ? 'Doppel' : 'Einzel'}, ${y.approxTime ? `ca. ${fmt.date(y.t)}` : `${fmt.date(y.t)}, ${fmt.time(y.t)} Uhr`}`, null, { back: true }),
         h('p', { class: 'lead' }, `${who(y.winners)} ${y.double ? 'schlagen' : 'schlägt'} ${who(y.losers)}.`),
         modeNote(`Dieses Spiel ist ein ${y.double ? 'Doppel' : 'Einzel'} und zählt in der Wertung „${MODE_WORD[ctx.mode]}“ nicht.`)];
     }
@@ -56,10 +57,13 @@ function page(ctx) {
   const dup = sameRefCount(dataset, g);
 
   return [
-    viewHead(`${kind}, ${x.approxTime ? `ca. ${fmt.date(x.t)}` : `${fmt.date(x.t)}, ${fmt.time(x.t)} Uhr`}`),
+    viewHead(`${kind}, ${x.approxTime ? `ca. ${fmt.date(x.t)}` : `${fmt.date(x.t)}, ${fmt.time(x.t)} Uhr`}`, null, { key: 'spiel', back: true, info: [
+      'Elo-Punkte: Der Sieger bekommt K × (1 − Siegchance vorher), der Verlierer verliert gleich viele. Im Doppel gilt das für jeden Partner, und die Teamstärke ist der Mittelwert der beiden Elo-Werte.',
+      ['Der Zeitstempel unten bestimmt das Spiel eindeutig. Ist das Ergebnis falsch, ihn bitte ', ctx.model.dataset.config.form_support_url ? h('a', { href: ctx.model.dataset.config.form_support_url, target: '_blank', rel: 'noopener' }, 'im Support-Formular') : 'im Support-Formular', ' unter „Betroffenes Spiel“ angeben.']].map(x => (Array.isArray(x) ? h('p', {}, x) : x)) }),
     missing ? h('p', { class: 'error' }, 'Dieses Spiel gibt es in den geladenen Daten nicht (mehr). Angezeigt wird das letzte Spiel.') : null,
     h('p', { class: 'lead' }, `${team(x.winners)} ${x.double ? 'schlagen' : 'schlägt'} ${team(x.losers)}.`),
     h('div', { class: 'sides' }, side('Gewonnen', W, 'win'), side('Verloren', L, 'loss')),
+    ctx.badges ? earnedInGame(ctx, ctx.badges, ctx.mode === 'alle' ? g : findGame(ctx.baseModel.dataset, x.ref)) : null,
     h('div', { class: 'tiles' },
       tile({ label: 'Siegchance vorher', value: fmt.pct(f.eW), sub: `für ${team(x.winners)}` }),
       tile({ label: 'Elo-Punkte', value: fmt.signed(f.delta, 1), tone: 'up', sub: x.double ? 'je Sieger gewonnen, je Verlierer verloren' : 'gewonnen und verloren' }),
@@ -78,7 +82,6 @@ function page(ctx) {
         : `Formulareintrag, Zeile ${x.row}`),
       x.corrected ? [h('dt', {}, 'Korrektur'), h('dd', {}, 'Ergebnis nachträglich getauscht')] : null,
       h('dt', {}, 'Zeitstempel'), h('dd', {}, h('code', {}, x.ref)),
-      dup > 1 ? [h('dt', {}, 'Hinweis'), h('dd', {}, `${dup} Spiele haben diesen Zeitstempel; hier steht das erste.`)] : null),
-    h('p', { class: 'chart-note' }, 'Der Zeitstempel bestimmt das Spiel eindeutig. Ist das Ergebnis falsch, ihn bitte im Support-Formular unter „Betroffenes Spiel“ angeben.'),
+      dup > 1 ? [h('dt', {}, 'Hinweis'), h('dd', {}, `${dup} Spiele haben diesen Zeitstempel, hier steht das erste.`)] : null),
   ];
 }

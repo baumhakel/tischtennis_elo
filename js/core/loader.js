@@ -126,6 +126,7 @@ function parseConfig(grid, report) {
   }
   const missing = Object.keys(CONFIG_DEFAULTS)
     .filter(k => !set.has(k) && k !== 'responses_valid_from')   // the cutoff has its own error issue
+    .filter(k => !CONFIG_DEFAULTS[k].optional)                   // optional keys: empty = feature off
     .filter(k => !t.rows.some(({ cells }) => norm(cell(cells, t.col.key)) === k && clean(cell(cells, t.col.value)) !== ''));
   for (const key of missing) {
     report('warning', 'missing_config',
@@ -165,6 +166,22 @@ function parseConfigValue(def, v) {
       const s = norm(v);
       return def.options.includes(s) ? s : undefined;
     }
+    case 'string':
+      return clean(v);
+    case 'list': {   // numbers separated by commas (or by semicolons, then decimal commas work: „0,3; 0,2“); every value within [min, max]
+      const str = String(v);
+      const parts = Array.isArray(v) ? v : typeof v === 'number' ? [v] : str.split(str.includes(';') ? ';' : ',');
+      const nums = parts.map(x => (typeof x === 'number' ? x : toNumber(String(x).trim().replace(',', '.')))).filter(x => x != null);
+      return nums.length && nums.length === parts.filter(x => String(x).trim() !== '').length && nums.every(inRange) ? nums : undefined;
+    }
+    case 'names': {  // text list, comma separated
+      const parts = (Array.isArray(v) ? v : String(v).split(',')).map(x => clean(x)).filter(Boolean);
+      return parts.length ? parts : undefined;
+    }
+    case 'url': {
+      const s = String(v).trim();
+      return /^https:\/\/[^\s]+$/.test(s) ? s : undefined;
+    }
     default:
       return undefined;
   }
@@ -172,13 +189,20 @@ function parseConfigValue(def, v) {
 
 // ───────── 2. players + aliases ─────────
 
+const EMAIL_RE = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
+
+/** "A@x.com; b@y.com" → ['a@x.com', 'b@y.com'] (lowercase, unique); anything that isn't an address is dropped. */
+export function parseAccounts(v) {
+  return [...new Set(String(v ?? '').split(/[,;\s]+/).map(x => x.toLowerCase()).filter(x => EMAIL_RE.test(x)))];
+}
+
 function parsePlayers(playersGrid, aliasesGrid, report) {
   /** @type {Map<string, import('../types.js').Player>} */
   const players = new Map();
   /** norm(name) → player id */
   const idByName = new Map();
 
-  const p = readTable(playersGrid, COLUMNS.players);
+  const p = readTable(playersGrid, COLUMNS.players, OPTIONAL_COLUMNS.players || []);
   if (p.missing.length) {
     report('error', 'missing_column',
       `Tab ${TABS.players}: Spalte(n) ${p.missing.join(', ')} fehlen.`, { tab: TABS.players });
@@ -197,7 +221,16 @@ function parsePlayers(playersGrid, aliasesGrid, report) {
         continue;
       }
       const active = toBool(cell(cells, p.col.active));
-      players.set(id, { id, name, active: active === null ? true : active });
+      players.set(id, { id, name, active: active === null ? true : active, accounts: parseAccounts(cell(cells, p.col.google_accounts)) });
+    }
+    // An address on two players is ignored (the Verwaltung script refuses this; hand edits can still do it).
+    const owners = new Map();
+    for (const pl of players.values()) for (const a of pl.accounts) owners.set(a, [...(owners.get(a) || []), pl.id]);
+    for (const [a, ids] of owners) {
+      if (ids.length < 2) continue;
+      report('warning', 'bad_account', `Das Google-Konto ${a} ist mehreren Spielern zugeordnet (${ids.join(', ')}) und wird ignoriert. Bitte im Tab ${TABS.players} korrigieren.`,
+        { tab: TABS.players });
+      for (const id of ids) players.get(id).accounts = players.get(id).accounts.filter(x => x !== a);
     }
   }
 
@@ -373,7 +406,7 @@ function toGame(r, idByName, unknown, report) {
 function datasetHash(config, players, games) {
   const parts = [
     JSON.stringify(Object.keys(config).sort().map(k => [k, config[k]])),
-    [...players.values()].map(p => `${p.id}:${p.name}:${p.active ? 1 : 0}`).sort().join(','),
+    [...players.values()].map(p => `${p.id}:${p.name}:${p.active ? 1 : 0}:${p.accounts.join(';')}`).sort().join(','),
     String(games.length),
   ];
   for (const g of games) {

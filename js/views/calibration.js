@@ -3,10 +3,9 @@ import { h, render } from '../ui/dom.js';
 import * as fmt from '../ui/format.js';
 import { seriesColor, css } from '../ui/colors.js';
 import { lineChart } from '../ui/charts/line.js';
-import { viewHead, tile, segmented, plainTable, linkTo } from './common.js';
+import { viewHead, tile, plainTable, linkTo } from './common.js';
 import { binRange } from './insights.js';
 
-const KINDS = { all: 'Alle', singles: 'Einzel', doubles: 'Doppel' };
 
 export default {
   id: 'calibration',
@@ -16,15 +15,15 @@ export default {
     render(el, head, tiles, chartEl, note, table);
     let chart = null;
     function update(c) {
-      const kind = c.mode === 'alle' && KINDS[c.params.art] ? c.params.art : 'all';   // in Einzel/Doppel the mode is the split
+      const kind = 'all';   // the split by type is the Wertung switch (Einzel/Doppel have their own ratings and calibration)
       const cal = c.model.stats.get('calibration')[kind];
-      render(head, viewHead('Kalibrierung', 'Stimmen die Siegchancen laut Elo mit den tatsächlichen Ergebnissen überein? Jedes Spiel wird nach der vorhergesagten Siegchance einsortiert; liegen die Punkte auf der Diagonale, passen Vorhersage und Wirklichkeit zusammen.'),
-        c.mode === 'alle' ? h('div', { class: 'toolbar' }, segmented(c, { label: 'Spielart', param: 'art', value: kind, options: Object.entries(KINDS) })) : null);
+      render(head, viewHead('Kalibrierung', 'Stimmen die Siegchancen laut Elo?', { info: ['Jedes Spiel wird nach der vorhergesagten Siegchance einsortiert, aus Sicht beider Seiten (deshalb ist das Bild symmetrisch). Liegen die Punkte auf der Diagonale, passen Vorhersage und Wirklichkeit zusammen.', 'Log-Loss: Mittelwert von −ln(vorhergesagte Chance des tatsächlichen Ergebnisses). Brier-Score: Mittelwert von (Chance − Ergebnis)². Bei beiden ist kleiner besser, ein Münzwurf erreicht 0,693 bzw. 0,250.'] }),
+        null);
       render(tiles,
-        tile({ label: 'Spiele', value: fmt.int(cal.games), sub: c.mode === 'alle' ? KINDS[kind] : c.mode === 'einzel' ? 'Einzel' : 'Doppel' }),
-        tile({ label: 'Log-Loss', value: Number.isFinite(cal.logLoss) ? cal.logLoss.toFixed(3).replace('.', ',') : '–', sub: 'kleiner ist besser; Münzwurf: 0,693' }),
-        tile({ label: 'Brier-Score', value: Number.isFinite(cal.brier) ? cal.brier.toFixed(3).replace('.', ',') : '–', sub: 'kleiner ist besser; Münzwurf: 0,250' }),
-        tile({ label: 'Favorit gewinnt', value: favourite(c, kind), sub: 'Anteil der Spiele; die Ausnahmen: Überraschungen', link: linkTo(c, 'upsets') }));
+        tile({ label: 'Spiele', value: fmt.int(cal.games), sub: { alle: 'Einzel und Doppel', einzel: 'Einzel', doppel: 'Doppel' }[c.mode] }),
+        tile({ label: 'Log-Loss', value: Number.isFinite(cal.logLoss) ? cal.logLoss.toFixed(3).replace('.', ',') : '–', sub: 'kleiner ist besser (Münzwurf: 0,693)' }),
+        tile({ label: 'Brier-Score', value: Number.isFinite(cal.brier) ? cal.brier.toFixed(3).replace('.', ',') : '–', sub: 'kleiner ist besser (Münzwurf: 0,250)' }),
+        tile({ label: 'Favorit gewinnt', value: favourite(c, kind), sub: 'Anteil der Spiele (die Ausnahmen: Überraschungen)', link: linkTo(c, 'upsets') }));
 
       const idx = [...cal.n.keys()].filter(b => cal.n[b] > 0);
       if (idx.length < 2) {
@@ -42,14 +41,14 @@ export default {
         };
         if (!chart) { chartEl.replaceChildren(); chart = lineChart(chartEl, spec); } else chart.update(spec);
       }
-      note.textContent = 'x-Achse: vorhergesagte Siegchance, y-Achse: tatsächlicher Anteil der Siege. Jedes Spiel zählt zweimal, aus Sicht beider Seiten; deshalb ist das Bild symmetrisch.';
+      note.textContent = 'x-Achse: vorhergesagte Siegchance, y-Achse: tatsächlicher Anteil der Siege.';
       const bins = cal.n.length;
       const rangeOf = b => { const r = binRange(b, bins); return `${fmt.pct(r.lo)} bis ${fmt.pct(r.hi)}`; };
       render(table, h('h2', {}, 'Nach Siegchance'),
-        h('p', { class: 'lead' }, 'Tippe auf einen Bereich: Wer gewinnt dort öfter oder seltener, als Elo erwartet?'),
+        h('p', { class: 'lead' }, 'Tippe auf einen Bereich: Wer schlägt dort die Erwartung?'),
         plainTable(['Siegchance', 'Vorhergesagt', 'Tatsächlich', 'Seiten'],
           idx.map(b => [rangeOf(b), fmt.pct(cal.predicted[b]), fmt.pct(cal.observed[b]), fmt.int(cal.n[b])]), [1, 2, 3],
-          idx.map(b => linkTo(c, 'siegchance', { chance: binRange(b, bins).param, art: kind === 'all' ? null : kind }))));
+          idx.map(b => linkTo(c, 'siegchance', { chance: binRange(b, bins).param }))));
     }
     update(ctx);
     return { update, unmount() { chart?.destroy(); } };

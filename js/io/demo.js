@@ -46,19 +46,24 @@ export function demoRaw(timeZone, size = 'klein') {
   });
   spiele.splice(1, 0, [cutoff - 2, 'Anna', '', 'Bernd', '']);   // a test row before the cutoff
 
+  const demoValue = { responses_valid_from: cutoff, form_result_url: DEMO_FORM, form_support_url: DEMO_FORM, form_management_url: DEMO_FORM };
   const config = [['key', 'value', 'note'], ...Object.entries(CONFIG_DEFAULTS)
-    .map(([k, d]) => [k, k === 'responses_valid_from' ? cutoff : d.value, 'Demo'])];
-  const players = [['id', 'display_name', 'active'], ...NAMES.map((n, k) => [`p${String(k + 1).padStart(3, '0')}`, n, true])];
+    .map(([k, d]) => [k, k in demoValue ? demoValue[k] : d.value, 'Demo'])];
+  // the demo account is mapped to the third player, so „Ich“ works without asking
+  const players = [['id', 'display_name', 'active', 'google_accounts'],
+    ...NAMES.map((n, k) => [`p${String(k + 1).padStart(3, '0')}`, n, true, k === 2 ? DEMO_EMAIL : ''])];
   const aliases = [['name', 'player_id'], ...NAMES.map((n, k) => [n, `p${String(k + 1).padStart(3, '0')}`])];
   return { config, legacy, spiele, players, aliases, corrections: [['game_ref', 'action', 'note']] };
 }
 
 /** Stand-in for io/auth.js: always signed in. */
+export const DEMO_EMAIL = 'demo@beispiel.at';
+const DEMO_FORM = 'https://example.org/demo-formular';
 export function demoAuth() {
   return {
     init: async () => {}, ready: () => true, getToken: () => 'demo', signIn: async () => 'demo',
     signOut() {}, expire() {}, onChange: () => () => {},
-    state: () => ({ ready: true, signedIn: true, email: 'Demo-Modus', expiresAt: Infinity, demo: true }),
+    state: () => ({ ready: true, signedIn: true, email: DEMO_EMAIL, expiresAt: Infinity, demo: true }),
   };
 }
 

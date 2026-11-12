@@ -1,6 +1,6 @@
 // Static app constants. No side effects: safe to import from core/ (browser, worker, Node).
 
-export const APP_VERSION = '2.0.0-dev.3';   // bump to invalidate the browser cache
+export const APP_VERSION = '2.0.0-dev.7';   // bump to invalidate the browser cache
 
 // >>> FILL IN: OAuth client ID (ends in .apps.googleusercontent.com)
 export const CLIENT_ID = '975581090195-pgfv9ptq40fkp728151hqpru116pg732.apps.googleusercontent.com';
@@ -28,7 +28,7 @@ export const COLUMNS = {
                  l1: ['loser1'], l2: ['loser2'], source_row: ['source_row'] },
   spiele:      { timestamp: ['Zeitstempel', 'Timestamp'], w1: ['Sieger 1'], w2: ['Sieger 2'],
                  l1: ['Verlierer 1'], l2: ['Verlierer 2'] },
-  players:     { id: ['id'], display_name: ['display_name'], active: ['active'] },
+  players:     { id: ['id'], display_name: ['display_name'], active: ['active'], google_accounts: ['google_accounts'] },
   aliases:     { name: ['name'], player_id: ['player_id'] },
   corrections: { game_ref: ['game_ref'], action: ['action'], note: ['note'] },
 };
@@ -37,6 +37,7 @@ export const COLUMNS = {
 export const OPTIONAL_COLUMNS = {
   legacy: ['source_row'],
   corrections: ['note'],
+  players: ['google_accounts'],
 };
 
 // Keys of the `config` tab in the sheet. RULE: every tunable constant of the app is a key here
@@ -81,6 +82,52 @@ export const CONFIG_DEFAULTS = {
   // app shell
   default_x_axis:                { type: 'enum',    value: 'game', options: ['date', 'game', 'own'] },
   auto_refresh_seconds:          { type: 'integer', value: 60,   min: 0 },   // reload on return to the app if older; 0 = off
+  // form links (Phase 10): only in the sheet, never in this public code. optional: empty = no link, no issue
+  form_result_url:               { type: 'url',     value: '', optional: true },   // Ergebnis form
+  form_support_url:              { type: 'url',     value: '', optional: true },   // Support form
+  form_management_url:           { type: 'url',     value: '', optional: true },   // Verwaltung form
+  // Tisch (Phase 11): question IDs of the Ergebnis form for pre-filled result links (optional, only in the sheet)
+  form_result_entry_winner1:     { type: 'string',  value: '', optional: true },
+  form_result_entry_winner2:     { type: 'string',  value: '', optional: true },
+  form_result_entry_loser1:      { type: 'string',  value: '', optional: true },
+  form_result_entry_loser2:      { type: 'string',  value: '', optional: true },
+  suggestions_count:             { type: 'integer', value: 5,    min: 1 },   // Tisch: „Wer sollte als Nächstes spielen?“
+  suggestions_recent_days:       { type: 'integer', value: 28,   min: 1 },   // … pairs that rarely met in these days get a bonus
+  // Abzeichen (Phase 12). Lists: comma-separated; a longer list = more levels, no code change needed.
+  achievement_tier_names:        { type: 'names',   value: ['Gebietsliga', 'Landesliga', 'Bundesliga', 'Champions League', 'Universumsliga', 'Götterliga'] },
+  achievement_rank_min_games:    { type: 'integer', value: 20,   min: 0 },   // Platz for badges: min games by then …
+  achievement_rank_active_days:  { type: 'integer', value: 30,   min: 1 },   // … and a game within these days
+  achievement_games_levels:      { type: 'list',    value: [50, 250, 500, 1000], min: 1 },
+  achievement_days_levels:       { type: 'list',    value: [10, 50, 100, 200], min: 1 },
+  achievement_weeks_levels:      { type: 'list',    value: [4, 12, 26], min: 1 },
+  achievement_opponents_levels:  { type: 'list',    value: [5, 10, 15], min: 1 },
+  achievement_all_beaten_min:    { type: 'integer', value: 8,    min: 1 },   // Alle besiegt / Jeden fünfmal: at least this many opponents
+  achievement_each_wins:         { type: 'integer', value: 5,    min: 1 },   // Jeden fünfmal: wins against each …
+  achievement_each_min_games:    { type: 'integer', value: 10,   min: 1 },   // … opponent with at least this many singles
+  achievement_win_streak_levels: { type: 'list',    value: [5, 8, 12], min: 1 },
+  achievement_comeback_losses:   { type: 'integer', value: 4,    min: 1 },
+  achievement_subscription_wins: { type: 'integer', value: 5,    min: 1 },   // Abo
+  achievement_perfect_week_wins: { type: 'integer', value: 5,    min: 1 },
+  achievement_giant_chance_levels: { type: 'list',  value: [0.3, 0.2, 0.1], min: 0, max: 1 },
+  achievement_underdog_streak:   { type: 'integer', value: 3,    min: 1 },
+  achievement_unlucky_chance:    { type: 'number',  value: 0.9,  min: 0.5, max: 1 },
+  achievement_podium_rank:       { type: 'integer', value: 3,    min: 1 },   // Aufs Podest
+  achievement_leader_days_levels: { type: 'list',   value: [7, 30, 90], min: 1 },
+  achievement_elo_levels:        { type: 'list',    value: [1500, 1550, 1600, 1650], min: 0 },
+  achievement_rocket_points:     { type: 'number',  value: 50,   min: 1 },
+  achievement_rising_star_levels: { type: 'list',   value: [1, 3, 10], min: 1 },
+  achievement_balanced_levels:   { type: 'list',    value: [5, 10], min: 1 },
+  achievement_duel_levels:       { type: 'list',    value: [50, 100], min: 1 },
+  achievement_partner_levels:    { type: 'list',    value: [3, 6, 10], min: 1 },
+  achievement_dream_team_wins:   { type: 'integer', value: 20,   min: 1 },
+  achievement_early_hour:        { type: 'number',  value: 8,    min: 0, max: 24 },
+  achievement_late_hour:         { type: 'number',  value: 17,   min: 0, max: 24 },
+  achievement_marathon_games:    { type: 'integer', value: 6,    min: 2 },
+  achievement_busy_day_games:    { type: 'integer', value: 10,   min: 2 },
+  achievement_lucky_numbers:     { type: 'list',    value: [1444, 1555, 1666], min: 0 },
+  achievement_balance_min_games: { type: 'integer', value: 50,   min: 2 },
+  achievement_jubilee_games:     { type: 'integer', value: 100,  min: 1 },
+  session_gap_minutes:           { type: 'integer', value: 20,   min: 1 },   // Abzeichen (Marathon), later the Labor
 };
 
 // ───────── Technical constants (not in the config tab) ─────────

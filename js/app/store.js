@@ -7,6 +7,7 @@
 //            focus = player IDs by colour slot (null = empty slot), at most 8
 //   data:    { model, source: null|'cache'|'sheet', updatedAt, loading, error, needsSignIn }
 //   auth:    { ready, signedIn, email, expiresAt }
+//   me:      { choice, id, snoozeUntil, seen }      „Ich“ on this device (app/me.js); replaced as a whole
 // }
 // model = { dataset, elo, stats } once loaded.
 
@@ -17,6 +18,7 @@ export function initialState() {
     filters: { mode: null, minGames: null, inactivityDays: null, xAxis: null, focus: null },
     data: { model: null, source: null, updatedAt: 0, loading: false, error: null, needsSignIn: false },
     auth: { ready: false, signedIn: false, email: null, expiresAt: 0 },
+    me: { choice: null, id: null, snoozeUntil: 0, seen: {} },
   };
 }
 

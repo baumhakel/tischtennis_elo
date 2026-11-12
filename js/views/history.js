@@ -23,7 +23,10 @@ export default {
       const N = c.model.dataset.games.length;
       const cfg = c.model.dataset.config;
 
-      render(head, viewHead('Elo-Verlauf'),
+      render(head, viewHead('Elo-Verlauf', null, { info: [
+        'Elo-Wert jedes Spielers nach jedem seiner Spiele. Farbig sind die hervorgehobenen Spieler, grau alle anderen.',
+        `„Geglättet“ mittelt den Verlauf mit Gauß-Gewichten (Standardabweichung ${fmt.dec1(cfg.smooth_sd_games).replace(',0', '')} Spiele, auf der Datumsachse ${fmt.dec1(cfg.smooth_sd_days).replace(',0', '')} Tage). Das Band zeigt, wie stark der Wert darum schwankt. Die Glättung nutzt immer den ganzen Verlauf, der Zeitraum schneidet nur aus.`,
+        'Die x-Achse lässt sich im Menü unter „Filter“ umstellen.'] }),
         h('div', { class: 'toolbar' },
           segmented(c, { label: 'Zeitraum', param: 'zeitraum', value: range, options: RANGES.map(r => [r, RANGE_LABELS[r]]) }),
           segmented(c, { label: 'Darstellung', param: 'ansicht', value: smooth ? 'geglaettet' : 'roh',
@@ -39,9 +42,7 @@ export default {
         empty.replaceChildren();
         const spec = smooth ? smoothed(c, startG) : raw(c, startG);
         if (!chart) chart = lineChart(chartEl, spec); else chart.update(spec);
-        note.textContent = `x-Achse: ${X_AXIS_NAMES[c.filters.xAxis]} (umstellbar unter „Filter“).` + (smooth
-          ? ` Geglättet über ±${c.filters.xAxis === 'date' ? `${fmt.dec1(cfg.smooth_sd_days).replace(',0', '')} Tage` : `${fmt.dec1(cfg.smooth_sd_games).replace(',0', '')} Spiele`} (Standardabweichung des Gauß-Kerns); das Band zeigt, wie stark die Wertung in diesem Fenster schwankt.`
-          : '');
+        note.textContent = '';
       }
       render(table, summaryTable(c));
     }
@@ -58,7 +59,7 @@ function rangeText(ctx, range, startG) {
   if (range === 'heute') return n ? `${count} heute.` : '';
   if (range === 'aktuell') {
     const cfg = ctx.model.dataset.config;
-    return `Die letzten ${cfg.dashboard_days} Tage, mindestens aber die letzten ${cfg.dashboard_games} Spiele – wie auf der Übersicht. ${count} seit ${fmt.date(games[startG].t)}.`;
+    return `${count} seit ${fmt.date(games[startG].t)}, wie auf der Übersicht.`;
   }
   return n ? `${count} seit ${fmt.date(games[startG].t)}.` : '';
 }

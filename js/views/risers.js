@@ -21,9 +21,12 @@ function page(ctx) {
   const rows = r.rows.filter(x => !ctx.visible.inactive.has(x.k));
   const ok = x => x.qualifies && ctx.visible.isShown(x.k);
   const winner = rows.find(ok);
-  const span = days === 7 ? 'der letzten sieben Tage' : `der letzten ${days} Tage`;
+  const span = days === 7 ? 'der letzten sieben Tage' : `der letzten ${days} Tage`;   // rolling window up to now
   return [
-    viewHead('Aufsteiger', `Elo-Veränderung ${span}, seit ${fmt.when(r.from, ctx.now)} Uhr. „Aufsteiger der Woche“ wird, wer am meisten gewonnen hat, mit mindestens ${min} Spielen in dieser Zeit und ohne vorläufige Wertung. Tippe auf eine Zeile für die Spiele dieser Zeit.`),
+    viewHead('Aufsteiger', `Elo-Veränderung ${span}.`, { info: [`Gezählt wird seit ${fmt.when(r.from, ctx.now)} Uhr: Elo-Wert jetzt minus Elo-Wert davor. Hervorgehoben (und auf der Übersicht gezeigt) wird, wer am meisten gewonnen hat, mit mindestens ${min} Spielen in dieser Zeit und ohne vorläufige Wertung.`,
+      h('p', {}, 'Das Abzeichen „Aufsteiger der Woche“ zählt dagegen Kalenderwochen von Montag bis Sonntag und wird erst vergeben, wenn die Woche vorbei ist. Alle Gewinner stehen in der ', h('a', { ...linkTo(ctx, 'ruhmeshalle') }, 'Ruhmeshalle'), '.'),
+      'Tippe auf eine Zeile für die Spiele dieser Zeit.'] }),
+    h('nav', { class: 'links' }, h('a', { class: 'tap', ...linkTo(ctx, 'ruhmeshalle') }, 'Ruhmeshalle: Aufsteiger jeder Kalenderwoche')),
     rows.length
       ? plainTable(['Spieler', 'Veränderung', 'Spiele', 'Siege : Niederlagen'],
           rows.map(x => [

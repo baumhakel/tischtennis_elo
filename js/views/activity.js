@@ -77,7 +77,7 @@ export default {
       render(scale, h('div', { class: 'scale' }, '0',
         h('span', { class: 'bar', style: `background:linear-gradient(90deg, ${[0, 0.25, 0.5, 0.75, 1].map(sequential).join(',')})` }),
         `${max} Spiele pro Woche`),
-        h('p', { class: 'chart-note' }, 'Tippe auf ein Feld für die Spiele dieser Woche, auf einen Namen für das Profil. Die senkrechte Linie markiert den Start der Formulareinträge; Zeitpunkte davor sind geschätzt.'));
+        null);
     }
 
     canvas.addEventListener('pointermove', e => {
@@ -110,7 +110,7 @@ export default {
 
     function update(c) {
       current = c;
-      render(head, viewHead('Aktivität', 'Spiele pro Spieler und Kalenderwoche (Montag bis Sonntag), sortiert nach der Gesamtzahl.'));
+      render(head, viewHead('Aktivität', 'Spiele pro Spieler und Woche.', { info: ['Kalenderwochen von Montag bis Sonntag, Spieler nach der Gesamtzahl ihrer Spiele sortiert. Tippe auf ein Feld für die Spiele dieser Woche, auf einen Namen für das Profil.', 'Die senkrechte Linie markiert den Start der Formulareinträge. Davor sind die Zeitpunkte geschätzt.'] }));
       draw();
       const act = c.model.stats.get('activity');
       const ks = c.visible.listed.slice().sort((a, b) => c.model.elo.played[b] - c.model.elo.played[a]);

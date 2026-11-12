@@ -33,6 +33,7 @@
  * @property {string} id       e.g. "p007"
  * @property {string} name     current display_name
  * @property {boolean} active
+ * @property {string[]} accounts  Google-account e-mail addresses (lowercase), from players.google_accounts
  */
 
 /**

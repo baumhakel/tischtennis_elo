@@ -17,6 +17,7 @@ export function resolveFilters(filters, config) {
     inactivityDays: filters.inactivityDays ?? config.default_inactivity_days,
     xAxis: filters.xAxis ?? config.default_x_axis,
     focus: filters.focus ?? null,           // resolved against the data by resolveFocus()
+    range: filters.range ?? config.default_time_range,   // Zeitraum spec (core/window.js); only some views use it
   };
 }
 
@@ -78,7 +79,7 @@ export function visible(dataset, elo, f, now) {
     const lastT = dataset.games[elo.lastG[k]].t;
     if (f.inactivityDays > 0 && lastT < now - f.inactivityDays) { inactive.add(k); continue; }
     listed.push(k);
-    if (elo.played[k] < f.minGames) provisional.add(k);
+    if (elo.played[k] + (elo.prior ? elo.prior[k] : 0) < f.minGames) provisional.add(k);   // a window (Zeitraum) counts earlier games too
     else shown.push(k);
   }
   const shownSet = new Set(shown);

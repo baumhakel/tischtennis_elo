@@ -6,7 +6,9 @@
 //   fokus = highlighted players in colour-slot order, '-' = empty slot (so others keep their colour):
 //   #/history?fokus=p003,-,p007  → p003 has colour 1, p007 colour 3.
 
-const FILTER_KEYS = { modus: 'mode', min: 'minGames', inaktiv: 'inactivityDays', x: 'xAxis', fokus: 'focus' };
+const FILTER_KEYS = { modus: 'mode', min: 'minGames', inaktiv: 'inactivityDays', x: 'xAxis', fokus: 'focus', zeit: 'range' };   // zeit: Zeitraum (core/window.js)
+import { validRange } from '../core/window.js';
+
 const MODES = ['einzel', 'doppel'];   // absent = Alle
 const X_AXES = ['date', 'game', 'own'];
 
@@ -14,12 +16,13 @@ const X_AXES = ['date', 'game', 'own'];
 export function parseHash(hash) {
   const [path, query = ''] = String(hash || '').replace(/^#\/?/, '').split('?');
   const view = decodeURIComponent(path || '') || 'dashboard';
-  const filters = { mode: null, minGames: null, inactivityDays: null, xAxis: null, focus: null };
+  const filters = { mode: null, minGames: null, inactivityDays: null, xAxis: null, focus: null, range: null };
   const params = {};
   for (const [k, v] of new URLSearchParams(query)) {
     if (k in FILTER_KEYS) {
       if (k === 'x') { if (X_AXES.includes(v)) filters.xAxis = v; }
       else if (k === 'modus') { if (MODES.includes(v)) filters.mode = v; }
+      else if (k === 'zeit') { if (validRange(v)) filters.range = v; }
       else if (k === 'fokus') filters.focus = v.split(',').slice(0, 8).map(id => (id === '-' || !id ? null : id));
       else if (/^\d+$/.test(v)) filters[FILTER_KEYS[k]] = Number(v);
     } else {

@@ -212,3 +212,22 @@ test('Was fehlt: nothing for pure counts or finished badges', () => {
   assert.equal(hint(r, 'games', 'A'), null);
   assert.equal(hint(r, 'days', 'B'), null);
 });
+
+test('Monatssieger: Monatsaufsteiger and Platz 1 am Monatsende only after the month is over', () => {
+  // A wins 10 games in November against B; the month is over on 1 Dec 0 Uhr
+  const games = Array.from({ length: 10 }, (_, i) => [MON + i * 0.1 + 1, ['A'], ['B']]);   // 17–18 Nov 2026
+  const before = run(games, { monthly_min_games: 10 }, serialFromParts(2026, 11, 30, 23));
+  assert.equal(before.has('A', 'month_riser'), false);
+  assert.equal(before.has('A', 'month_leader'), false);
+  assert.equal(before.A.runningMonth.riser.id, 'p1');
+  const after = run(games, { monthly_min_games: 10 }, serialFromParts(2026, 12, 2));
+  assert.equal(after.has('A', 'month_riser'), true);
+  assert.equal(after.when('A', 'month_riser').t, serialFromParts(2026, 12, 1));
+  assert.equal(after.has('A', 'month_leader'), true);
+  assert.equal(after.A.monthly[0].riser.id, 'p1');
+  assert.equal(after.A.monthly[0].leader, 'p1');
+  // fewer games than monthly_min_games: no Monatsaufsteiger, Platz 1 still counts
+  const few = run(games.slice(0, 5), { monthly_min_games: 10 }, serialFromParts(2026, 12, 2));
+  assert.equal(few.has('A', 'month_riser'), false);
+  assert.equal(few.has('A', 'month_leader'), true);
+});

@@ -3,13 +3,16 @@
 // reached by links, not listed here.
 import { h, render } from '../ui/dom.js';
 import { viewHead, linkTo } from './common.js';
+import { labAvailable } from '../app/lab.js';
 
 const GROUPS = [
-  { title: 'Abzeichen', items: [
+  { title: 'Abzeichen und Rückblick', items: [
     ['abzeichen', 'Abzeichen', 'Wer was geschafft hat und was als Nächstes kommt'],
-    ['ruhmeshalle', 'Ruhmeshalle', 'Aufsteiger jeder Woche und alle auf Platz 1'],
+    ['ruhmeshalle', 'Ruhmeshalle', 'Monatssieger, Aufsteiger jeder Woche, alle auf Platz 1'],
+    ['rueckblick', 'Jahresrückblick', 'Das Jahr in Karten, für dich oder die ganze Runde'],
   ] },
   { title: 'Rangliste & Verlauf', items: [
+    ['rangliste', 'Rangliste', 'Die ganze Tabelle, auch für einen Monat oder ein Jahr'],
     ['history', 'Verlauf', 'Elo-Werte über die Zeit, roh oder geglättet'],
     ['rank', 'Rangverlauf', 'Wer wann auf welchem Platz stand'],
     ['aufsteiger', 'Aufsteiger', 'Wer in den letzten sieben Tagen Punkte gewonnen oder verloren hat'],
@@ -26,9 +29,12 @@ const GROUPS = [
     ['h2h', 'Direktvergleich', 'Zwei Spieler oder zwei Teams im Vergleich'],
     ['matrix', 'Matrix', 'Jeder gegen jeden: Begegnungen, Siege, Elo-Bilanz'],
     ['partners', 'Doppelpartner', 'Wer mit wem zusammen gewinnt'],
+    ['doppelspezialist', 'Doppelspezialist', 'Wer im Doppel stärker ist als im Einzel'],
   ] },
   { title: 'Statistik', items: [
+    ['prognose', 'Prognose', 'Wer am Monatsende auf Platz 1 steht, in Prozent'],
     ['calibration', 'Kalibrierung', 'Wie gut die Siegchancen stimmen'],
+    ['labor', 'Labor', 'Hot Hand, Revanche, Schere-Stein-Papier: Muster gegen den Zufall geprüft'],
   ] },
 ];
 
@@ -42,6 +48,7 @@ export default {
         h('h3', {}, g.title),
         h('ul', { class: 'hub' }, g.items
           .filter(([id]) => !(c.mode === 'einzel' && id === 'partners'))   // no doubles in the singles league
+          .filter(([id]) => id !== 'labor' || labAvailable(c.model, c.visible.shown.length))   // only with something to show
           .map(([id, title, desc]) => h('li', {}, h('a', { class: 'hub-card tap', ...linkTo(c, id) },
             h('span', { class: 'hub-title' }, title), h('span', { class: 'hub-desc' }, desc))))))));
     update(ctx);

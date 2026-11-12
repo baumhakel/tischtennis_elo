@@ -189,3 +189,64 @@ export function ratingAfter(elo, k, g) {
 export function ratingsAfter(elo, g) {
   return Float64Array.from(elo.ids, (_, k) => ratingAfter(elo, k, g));
 }
+
+// ───────── Time windows (Zeitraum, Phase 13) ─────────
+
+/**
+ * The EloResult of the games a … b−1 only, as a window onto the continuous rating: nothing is
+ * replayed, every rating is the one the full replay gave. Players are those who played in the
+ * window (re-indexed). Extra fields:
+ *   start[k]   rating entering the window (before the player's first game in it)
+ *   prior[k]   games played before the window (for provisional status and ranks)
+ * Matrices, counts, histories and first/last games cover the window only.
+ */
+export function sliceElo(full, a, b) {
+  const N = Math.max(0, b - a);
+  const seen = new Set();
+  for (let g = a; g < b; g++) for (let s = 0; s < 4; s++) { const k = full.slots[4 * g + s]; if (k >= 0) seen.add(full.ids[k]); }
+  const ids = [...seen].sort();
+  const index = new Map(ids.map((id, k) => [id, k]));
+  const n = ids.length;
+  const map = Int32Array.from(full.ids, id => (index.has(id) ? index.get(id) : -1));   // full k → window k
+  const slots = new Int32Array(4 * N).fill(-1);
+  for (let i = 0; i < N; i++) for (let s = 0; s < 4; s++) { const k = full.slots[4 * (a + i) + s]; if (k >= 0) slots[4 * i + s] = map[k]; }
+
+  const start = new Float64Array(n), prior = new Int32Array(n);
+  const r = new Float64Array(n), set = new Uint8Array(n);
+  for (let i = 0; i < N; i++) for (let s = 0; s < 4; s++) {
+    const k = slots[4 * i + s];
+    if (k >= 0 && !set[k]) { set[k] = 1; start[k] = r[k] = full.perGame.before[4 * (a + i) + s]; }
+  }
+  full.ids.forEach((id, K) => {
+    const k = map[K];
+    if (k < 0) return;
+    const hg = full.history[K].g;
+    let c = 0;
+    while (c < hg.length && hg[c] < a) c++;
+    prior[k] = c;
+  });
+
+  const rec = makeRecorder(n, N);
+  for (let i = 0; i < N; i++) {
+    const g = a + i;
+    const w1 = slots[4 * i], w2 = slots[4 * i + 1], l1 = slots[4 * i + 2], l2 = slots[4 * i + 3];
+    const eW = full.perGame.eW[g], delta = full.perGame.delta[g];
+    for (let s = 0; s < 4; s++) { const k = slots[4 * i + s]; if (k >= 0) r[k] = full.perGame.before[4 * g + s]; }
+    rec.onBefore(i, r, w1, w2, l1, l2, full.perGame.rW[g], full.perGame.rL[g], eW, delta);
+    r[w1] += delta; r[l1] -= delta;
+    if (w2 !== -1) { r[w2] += delta; r[l2] -= delta; }
+    rec.onAfter(i, r, w1, w2, l1, l2, eW, delta);
+  }
+  return {
+    settings: full.settings,
+    ids, index, slots, start, prior,
+    final: Float64Array.from(r),
+    perGame: { rW: rec.rW, rL: rec.rL, eW: rec.eW, delta: rec.delta, before: rec.before },
+    history: rec.finishHistory(),
+    played: rec.played, wins: rec.wins, losses: rec.losses,
+    singles: rec.singles, doubles: rec.doubles,
+    firstG: rec.firstG, lastG: rec.lastG,
+    pair: { matchups: rec.matchups, wins: rec.pairWins, transfer: rec.transfer, expected: rec.expected },
+    partner: { games: rec.partnerGames, wins: rec.partnerWins, expected: rec.partnerExpected },
+  };
+}

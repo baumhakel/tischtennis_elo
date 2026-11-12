@@ -6,6 +6,8 @@ import { tile, viewHead, modeNote, MODE_WORD } from './common.js';
 import { findGame, gameFacts, sameRefCount } from './game-query.js';
 import { linkTo, gameLink } from './games.js';
 import { earnedInGame } from './badges.js';
+import { shareButton } from '../ui/share.js';
+import { gameSpec } from './share-cards.js';
 
 export default {
   id: 'spiel',
@@ -57,7 +59,7 @@ function page(ctx) {
   const dup = sameRefCount(dataset, g);
 
   return [
-    viewHead(`${kind}, ${x.approxTime ? `ca. ${fmt.date(x.t)}` : `${fmt.date(x.t)}, ${fmt.time(x.t)} Uhr`}`, null, { key: 'spiel', back: true, info: [
+    viewHead(`${kind}, ${x.approxTime ? `ca. ${fmt.date(x.t)}` : `${fmt.date(x.t)}, ${fmt.time(x.t)} Uhr`}`, null, { key: 'spiel', back: true, share: shareButton(() => gameSpec(ctx, g), { name: 'spiel-' + x.ref }), info: [
       'Elo-Punkte: Der Sieger bekommt K × (1 − Siegchance vorher), der Verlierer verliert gleich viele. Im Doppel gilt das für jeden Partner, und die Teamstärke ist der Mittelwert der beiden Elo-Werte.',
       ['Der Zeitstempel unten bestimmt das Spiel eindeutig. Ist das Ergebnis falsch, ihn bitte ', ctx.model.dataset.config.form_support_url ? h('a', { href: ctx.model.dataset.config.form_support_url, target: '_blank', rel: 'noopener' }, 'im Support-Formular') : 'im Support-Formular', ' unter „Betroffenes Spiel“ angeben.']].map(x => (Array.isArray(x) ? h('p', {}, x) : x)) }),
     missing ? h('p', { class: 'error' }, 'Dieses Spiel gibt es in den geladenen Daten nicht (mehr). Angezeigt wird das letzte Spiel.') : null,

@@ -41,21 +41,22 @@ function page(ctx) {
   add(k >= 0, { label: 'Größter Gewinn in einem Spiel', value: fmt.signed(r.maxGain[k], 1), tone: 'up', who: who(k), sub: when(r.maxGainG[k]), link: game(r.maxGainG[k]) });
   k = best(r.maxLoss, -1);
   add(k >= 0, { label: 'Größter Verlust in einem Spiel', value: fmt.signed(r.maxLoss[k], 1), tone: 'down', who: who(k), sub: when(r.maxLossG[k]), link: game(r.maxLossG[k]) });
-  const bestRun = ks.map(k => runs.best[k][N - 1]), worstRun = ks.map(k => runs.worst[k][N - 1]);
+  const bestRun = ks.map(k => runs.best[k]?.[N - 1] ?? NaN), worstRun = ks.map(k => runs.worst[k]?.[N - 1] ?? NaN);   // fewer own games (Zeitraum): no run
   let i = bestRun.reduce((b, v, j) => (Number.isFinite(v) && (b < 0 || v > bestRun[b]) ? j : b), -1);
-  add(i >= 0, { label: `Größter Zuwachs in ${N} Spielen`, value: fmt.signed(bestRun[i]), tone: 'up', who: who(ks[i]), sub: `bis ${when(runs.bestEnd[ks[i]][N - 1])}`, link: span(ks[i], runs.bestEnd[ks[i]][N - 1], N) });
+  if (i >= 0) add(true, { label: `Größter Zuwachs in ${N} Spielen`, value: fmt.signed(bestRun[i]), tone: 'up', who: who(ks[i]), sub: `bis ${when(runs.bestEnd[ks[i]][N - 1])}`, link: span(ks[i], runs.bestEnd[ks[i]][N - 1], N) });
   i = worstRun.reduce((b, v, j) => (Number.isFinite(v) && (b < 0 || v < worstRun[b]) ? j : b), -1);
-  add(i >= 0, { label: `Größter Einbruch in ${N} Spielen`, value: fmt.signed(worstRun[i]), tone: 'down', who: who(ks[i]), sub: `bis ${when(runs.worstEnd[ks[i]][N - 1])}`, link: span(ks[i], runs.worstEnd[ks[i]][N - 1], N) });
+  if (i >= 0) add(true, { label: `Größter Einbruch in ${N} Spielen`, value: fmt.signed(worstRun[i]), tone: 'down', who: who(ks[i]), sub: `bis ${when(runs.worstEnd[ks[i]][N - 1])}`, link: span(ks[i], runs.worstEnd[ks[i]][N - 1], N) });
   k = best(r.longestWin);
   add(k >= 0, { label: 'Längste Siegesserie', value: String(r.longestWin[k]), who: who(k), sub: `Siege in Folge, bis ${when(r.longestWinG[k])}`, link: span(k, r.longestWinG[k], r.longestWin[k]) });
   k = best(r.longestLoss);
   add(k >= 0, { label: 'Längste Niederlagenserie', value: String(r.longestLoss[k]), who: who(k), sub: `Niederlagen in Folge, bis ${when(r.longestLossG[k])}`, link: span(k, r.longestLossG[k], r.longestLoss[k]) });
+  const win = !!ctx.window;   // in a Zeitraum only players with games in it are known, so Platz records are left out
   k = best(r.leaderDays);
-  add(k >= 0 && r.leaderDays[k] > 0, { label: 'Am längsten auf Platz 1', value: `${Math.round(r.leaderDays[k])} Tage`, who: who(k), sub: `insgesamt, dabei ${r.leaderOwnGames[k]} eigene Spiele`, link: ranks(k) });
+  add(!win && k >= 0 && r.leaderDays[k] > 0, { label: 'Am längsten auf Platz 1', value: `${Math.round(r.leaderDays[k])} Tage`, who: who(k), sub: `insgesamt, dabei ${r.leaderOwnGames[k]} eigene Spiele`, link: ranks(k) });
   k = best(r.leaderRun);
-  add(k >= 0 && r.leaderRun[k] > 0, { label: 'Längste Serie auf Platz 1', value: `${r.leaderRun[k]} Spiele`, who: who(k), sub: 'Ligaspiele ohne Unterbrechung', link: ranks(k) });
+  add(!win && k >= 0 && r.leaderRun[k] > 0, { label: 'Längste Serie auf Platz 1', value: `${r.leaderRun[k]} Spiele`, who: who(k), sub: 'Ligaspiele ohne Unterbrechung', link: ranks(k) });
   k = best(r.lastDays);
-  add(k >= 0 && r.lastDays[k] > 0, { label: 'Am längsten auf dem letzten Platz', value: `${Math.round(r.lastDays[k])} Tage`, who: who(k), sub: `insgesamt, ${r.lastGames[k]} Ligaspiele lang`, link: ranks(k) });
+  add(!win && k >= 0 && r.lastDays[k] > 0, { label: 'Am längsten auf dem letzten Platz', value: `${Math.round(r.lastDays[k])} Tage`, who: who(k), sub: `insgesamt, ${r.lastGames[k]} Ligaspiele lang`, link: ranks(k) });
   k = best(Float64Array.from(elo.played));
   add(k >= 0, { label: 'Meiste Spiele', value: fmt.int(elo.played[k]), who: who(k), sub: `${elo.wins[k]} Siege, ${elo.losses[k]} Niederlagen`, link: linkTo(ctx, 'activity') });
   const rate = Float64Array.from(elo.ids, (_, k) => elo.wins[k] / elo.played[k]);
@@ -76,9 +77,9 @@ function page(ctx) {
 
   const sorted = ks.slice().sort((a, b) => elo.final[b] - elo.final[a]);
   return h('div', { class: 'records' },
-    viewHead('Rekorde', null, { info: [`Berücksichtigt werden Spieler mit mindestens ${filters.minGames} Spielen. Auch bei den Platz-Rekorden zählt der Rang erst ab dieser Zahl.`, 'Bei den Altdaten sind die Daten geschätzt („ca.“). Tippe auf einen Rekord für das Spiel oder die Spiele dahinter.'] }),
+    viewHead('Rekorde', null, { info: [win ? `Nur Spiele im Zeitraum ${ctx.window.label}. Die Elo-Werte laufen durch. Rekorde zu Platz 1 gibt es nur ohne Zeitraum, weil dafür alle Spieler zählen, auch die, die im Zeitraum nicht gespielt haben.` : null, `Berücksichtigt werden Spieler mit mindestens ${filters.minGames} Spielen. Auch bei den Platz-Rekorden zählt der Rang erst ab dieser Zahl.`, 'Bei den Altdaten sind die Daten geschätzt („ca.“). Tippe auf einen Rekord für das Spiel oder die Spiele dahinter.'] }),
     h('div', { class: 'tiles' }, T),
-    tableView('Alle Spieler als Tabelle anzeigen', ['Spieler', 'Höchster', 'Tiefster', 'Siegesserie', 'Niederlagenserie', 'Tage auf Platz 1'],
-      sorted.map(k => [who(k), fmt.elo(r.highest[k]), fmt.elo(r.lowest[k]), String(r.longestWin[k]), String(r.longestLoss[k]), String(Math.round(r.leaderDays[k]))]),
-      [1, 2, 3, 4, 5], sorted.map(k => profileLink(ctx, k))));
+    tableView('Alle Spieler als Tabelle anzeigen', ['Spieler', 'Höchster', 'Tiefster', 'Siegesserie', 'Niederlagenserie', ...(win ? [] : ['Tage auf Platz 1'])],
+      sorted.map(k => [who(k), fmt.elo(r.highest[k]), fmt.elo(r.lowest[k]), String(r.longestWin[k]), String(r.longestLoss[k]), ...(win ? [] : [String(Math.round(r.leaderDays[k]))])]),
+      win ? [1, 2, 3, 4] : [1, 2, 3, 4, 5], sorted.map(k => profileLink(ctx, k))));
 }

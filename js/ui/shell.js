@@ -12,6 +12,8 @@ import { resolveFilters } from '../core/filters.js';
 import { MODES, MODE_LABELS, modelFor } from '../app/modes.js';
 import { resolveMe } from '../app/me.js';
 import { APP_VERSION } from '../config.js';
+import { windowRange } from '../core/window.js';
+import { viewById } from '../views/index.js';
 
 const X_LABELS = { date: 'Datum', game: 'Spielnummer', own: 'Eigene Spiele' };
 const TABS = [
@@ -85,8 +87,22 @@ export function createShell(root, { store, actions }) {
     h('label', { for: 'f-inact' }, 'Ausblenden nach Tagen ohne Spiel'), h('div', {}, inact, h('span', { class: 'muted hint' }, '0 = nie ausblenden')),
     h('span', { class: 'label' }, 'x-Achse'), h('div', { class: 'seg', role: 'radiogroup', 'aria-label': 'x-Achse' }, xs));
   filterGrid.addEventListener('change', e => { if (e.target.name === 'f-x') store.set({ filters: { xAxis: e.target.value } }); });
+  // Zeitraum: preset or own range (two dates); only some views follow it (views/index.js, zeit: true)
+  const RANGE_LABELS = { gesamt: 'Gesamt', monat: 'Dieser Monat', vormonat: 'Letzter Monat', jahr: 'Dieses Jahr', eigen: 'Eigener Zeitraum' };
+  const rangeSel = h('select', { id: 'f-range' }, Object.entries(RANGE_LABELS).map(([v, t]) => h('option', { value: v }, t)));
+  const rFrom = h('input', { type: 'date', id: 'f-range-from', 'aria-label': 'von' }), rTo = h('input', { type: 'date', id: 'f-range-to', 'aria-label': 'bis' });
+  const own = h('div', { class: 'range-own', hidden: true }, rFrom, h('span', {}, 'bis'), rTo);
+  const setOwn = () => { if (rFrom.value && rTo.value && rFrom.value <= rTo.value) store.set({ filters: { range: `${rFrom.value}..${rTo.value}` } }); };
+  rangeSel.addEventListener('change', () => {
+    if (rangeSel.value === 'eigen') { own.hidden = false; setOwn(); }
+    else { own.hidden = true; store.set({ filters: { range: rangeSel.value } }); }
+  });
+  rFrom.addEventListener('change', setOwn); rTo.addEventListener('change', setOwn);
+  const rangeGrid = h('div', { class: 'filter-grid' },
+    h('label', { for: 'f-range' }, 'Zeitraum'), h('div', {}, rangeSel, own,
+      h('span', { class: 'muted hint' }, 'Gilt für Rangliste, Rekorde, Matrix, Doppelpartner, Aktivität, Überraschungen, Alle Spiele und Kalibrierung. Die Elo-Werte laufen durch.')));
   const filterResets = h('div', { class: 'menu-actions' });
-  const filterSection = h('section', { class: 'menu-section', id: 'menu-filter' }, h('h3', {}, 'Filter'), filterGrid, filterResets);
+  const filterSection = h('section', { class: 'menu-section', id: 'menu-filter' }, h('h3', {}, 'Filter'), rangeGrid, filterGrid, filterResets);
   // persistent section containers: only their contents are re-rendered (the slider must never move while dragged)
   const box = id => h('div', { id: `menu-${id}-box` });
   const ichBox = box('ich'), mitBox = box('mitmachen'), datenBox = box('daten'), ueberBox = box('ueber');
@@ -151,6 +167,12 @@ export function createShell(root, { store, actions }) {
 
     // lens bar
     lens.hidden = !model;
+    // Zeitraum chip: only on views that follow it, and only when it differs from the default
+    function rangeChip(chip) {
+      if (!viewById(s.view)?.zeit || f.range === model.dataset.config.default_time_range) return null;
+      const r = windowRange(f.range, model.stats.now);
+      return r || f.range === 'gesamt' ? chip(r ? `Zeitraum: ${r.label}` : 'Zeitraum: gesamt', () => store.set({ filters: { range: null } })) : null;
+    }
     if (model) {
       for (const input of modeSeg.querySelectorAll('input')) input.checked = input.value === f.mode;
       const chip = (label, reset) => h('span', { class: 'chip lens-chip' },
@@ -160,11 +182,16 @@ export function createShell(root, { store, actions }) {
         s.filters.minGames != null ? chip(`ab ${f.minGames} Spielen`, () => store.set({ filters: { minGames: null } })) : null,
         s.filters.inactivityDays != null ? chip(f.inactivityDays > 0 ? `aktiv in ${f.inactivityDays} Tagen` : 'auch inaktive', () => store.set({ filters: { inactivityDays: null } })) : null,
         s.filters.xAxis != null ? chip(`x-Achse: ${X_LABELS[f.xAxis]}`, () => store.set({ filters: { xAxis: null } })) : null,
-        Array.isArray(s.filters.focus) ? chip('Hervorhebung angepasst', () => store.set({ filters: { focus: null } })) : null);
+        Array.isArray(s.filters.focus) ? chip('Hervorhebung angepasst', () => store.set({ filters: { focus: null } })) : null,
+        rangeChip(chip));
     }
 
     // filter controls
     if (model) {
+      const custom = !['gesamt', 'monat', 'vormonat', 'jahr'].includes(f.range);
+      rangeSel.value = custom ? 'eigen' : f.range;
+      if (custom) { own.hidden = false; const [a, b] = f.range.split('..'); if (document.activeElement !== rFrom) rFrom.value = a; if (document.activeElement !== rTo) rTo.value = b; }
+      else if (rangeSel !== document.activeElement) own.hidden = true;
       const maxPlayed = Math.max(1, ...modelFor(model, f.mode).elo.played);
       min.max = String(maxPlayed);
       min.value = String(Math.min(f.minGames, maxPlayed));
@@ -173,7 +200,7 @@ export function createShell(root, { store, actions }) {
       for (const l of xs) l.querySelector('input').checked = l.querySelector('input').value === f.xAxis;
       render(filterResets,
         Array.isArray(s.filters.focus) ? h('button', { class: 'secondary small', type: 'button', onclick: () => store.set({ filters: { focus: null } }) }, 'Hervorhebung zurücksetzen') : null,
-        h('button', { class: 'secondary small', type: 'button', onclick: () => store.set({ filters: { minGames: null, inactivityDays: null, xAxis: null, focus: null } }) },
+        h('button', { class: 'secondary small', type: 'button', onclick: () => store.set({ filters: { minGames: null, inactivityDays: null, xAxis: null, focus: null, range: null } }) },
           'Standardwerte wiederherstellen'));
     }
 
@@ -275,9 +302,19 @@ export function createShell(root, { store, actions }) {
       h('button', { type: 'button', onclick: actions.signIn, disabled: !auth.ready }, auth.ready ? 'Mit Google anmelden' : 'Anmeldung wird geladen …')));
   }
 
+  /** A view that follows the Zeitraum, but the window has no games (in this Wertung). */
+  function renderEmptyWindow(el, def, ctx) {
+    render(el, h('section', { class: 'empty' },
+      h('h2', {}, def.title),
+      h('p', {}, `Im Zeitraum ${ctx.window.label} gibt es ${ctx.mode === 'alle' ? 'keine Spiele' : ctx.mode === 'einzel' ? 'keine Einzel' : 'keine Doppel'}.`),
+      h('div', { class: 'row' },
+        h('button', { type: 'button', onclick: () => openMenu('filter') }, 'Zeitraum ändern'),
+        h('button', { type: 'button', class: 'secondary', onclick: () => store.set({ filters: { range: 'gesamt' } }) }, 'Ohne Zeitraum'))));
+  }
+
   window.addEventListener('online', () => update(store.get()));
   window.addEventListener('offline', () => update(store.get()));
   store.subscribe(update);
   update(store.get());
-  return { viewEl, renderEmpty, openMenu, closeMenu };
+  return { viewEl, renderEmpty, renderEmptyWindow, openMenu, closeMenu };
 }

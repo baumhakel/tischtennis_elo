@@ -1,5 +1,6 @@
 // Building blocks shared by the views.
 import { h } from '../ui/dom.js';
+import * as fmt from '../ui/format.js';
 import { seriesVar } from '../ui/colors.js';
 import { toggleFocus, MAX_FOCUS } from '../core/filters.js';
 import { formatHash } from '../app/url.js';
@@ -109,7 +110,7 @@ const openInfos = new Set();   // pages whose (i) is open survive re-renders
  * @param {{ info?: string|Node|Array, back?: boolean, key?: string }} [o]
  *   info: explanation (strings become paragraphs); key: identifies the page for the open state
  */
-export function viewHead(title, lead = null, { info = null, back = false, key = title } = {}) {
+export function viewHead(title, lead = null, { info = null, back = false, key = title, share = null } = {}) {
   const paras = info == null ? null : (Array.isArray(info) ? info : [info]).map(x => (typeof x === 'string' ? h('p', {}, x) : x));
   const id = 'info-' + String(key).replace(/[^a-z0-9]+/gi, '-').toLowerCase();
   const open = openInfos.has(key);
@@ -125,7 +126,7 @@ export function viewHead(title, lead = null, { info = null, back = false, key = 
   }, 'i') : null;
   return [
     back ? h('button', { class: 'back-link', type: 'button', onclick: goBack }, '‹ Zurück') : null,
-    h('div', { class: 'view-head' }, h('h2', {}, title), btn),
+    h('div', { class: 'view-head' }, h('h2', {}, title), btn, share),   // share: a shareButton() (ui/share.js) or null
     box,
     lead ? h('p', { class: 'lead' }, lead) : null,
   ];
@@ -169,3 +170,7 @@ export const missingInMode = (ctx, id) => !!id && ctx.mode !== 'alle' && !ctx.mo
 export const MODE_WORD = { einzel: 'Einzel', doppel: 'Doppel' };
 
 export const X_AXIS_NAMES = { date: 'Datum', game: 'Spielnummer', own: 'Nummer des eigenen Spiels' };
+
+/** Teamchemie for people: „+6“ (Siege über Erwartung pro 100 Doppel) and „−3 bis +15“. */
+export const chemValue = est => fmt.signed(100 * est);
+export const chemRange = (lo, hi) => `${fmt.signed(100 * lo)} bis ${fmt.signed(100 * hi)}`;

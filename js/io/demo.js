@@ -17,6 +17,9 @@ export function demoRaw(timeZone, size = 'klein') {
   let s = 20261110;
   const rnd = () => ((s = (s * 1103515245 + 12345) % 2147483648) / 2147483648);
   const skill = NAMES.map(() => rnd() * 400);
+  // a little made-up team chemistry, so the Doppel pages have something to show
+  const CHEM = { 'Anna+Bernd': 220, 'Clara+David': -200, 'Elif+Felix': 160, 'Greta+Hannes': -140 };
+  const chem = xs => (xs.length > 1 ? CHEM[xs.slice().sort().join('+')] || 0 : 0);
   const now = Math.floor(nowSerial(timeZone));
   const cutoff = now - 21 + 8 / 24;                       // last 3 weeks come from the "form"
   const games = [];
@@ -32,7 +35,7 @@ export function demoRaw(timeZone, size = 'klein') {
       const pick = new Set();
       while (pick.size < (dbl ? 4 : 2)) pick.add(pool[Math.floor(rnd() * pool.length)]);
       const q = [...pick], A = q.slice(0, q.length / 2), B = q.slice(q.length / 2);
-      const sk = xs => xs.reduce((a, x) => a + skill[NAMES.indexOf(x)], 0) / xs.length;
+      const sk = xs => xs.reduce((a, x) => a + skill[NAMES.indexOf(x)], 0) / xs.length + chem(xs);
       const pA = 1 / (1 + 10 ** ((sk(B) - sk(A)) / 400));
       games.push(rnd() < pA ? [t, A, B] : [t, B, A]);
     }

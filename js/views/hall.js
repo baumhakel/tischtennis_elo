@@ -5,6 +5,8 @@ import * as fmt from '../ui/format.js';
 import { viewHead, plainTable, tableView, linkTo } from './common.js';
 import { formatRef } from '../core/normalize.js';
 import { isoWeek } from './badge-defs.js';
+import { monthLabel } from '../core/window.js';
+import { serialToParts } from '../core/normalize.js';
 
 export default {
   id: 'ruhmeshalle',
@@ -26,7 +28,8 @@ const weekGames = (ctx, id, from, to) => linkTo(ctx, 'spiele', { spieler: id, vo
 function page(ctx) {
   const A = ctx.badges;
   const cfg = ctx.baseModel.dataset.config;
-  const head = viewHead('Ruhmeshalle', 'Aufsteiger jeder Woche und alle auf Platz 1.', { info: [
+  const head = viewHead('Ruhmeshalle', 'Monatssieger, Aufsteiger jeder Woche und alle auf Platz 1.', { info: [
+    `Monatsaufsteiger: meiste Elo-Punkte im Kalendermonat, mit mindestens ${cfg.monthly_min_games} Spielen im Monat und ${cfg.achievement_rank_min_games} Spielen insgesamt. Platz 1 am Monatsende: der Stand um Mitternacht am letzten Tag. Beides wird erst vergeben, wenn der Monat vorbei ist. Eine Zeile öffnet die Rangliste dieses Monats.`,
     `Aufsteiger der Woche: meiste Elo-Punkte von Montag bis Sonntag, mit mindestens ${cfg.rising_star_min_games} Spielen in der Woche und mindestens ${cfg.achievement_rank_min_games} Spielen insgesamt. Vergeben wird erst, wenn die Woche vorbei ist. Gezählt werden alle Spiele, unabhängig von der Wertung.`,
     'Die Kachel „Aufsteiger (letzte 7 Tage)“ auf der Übersicht zählt dagegen immer die letzten sieben Tage bis jetzt.',
     `Platz 1: unter den Spielern mit mindestens ${cfg.achievement_rank_min_games} Spielen, die in den ${cfg.achievement_rank_active_days} Tagen davor gespielt haben. Wer länger nicht spielt, verliert Platz 1 nach dieser Frist.`] });
@@ -48,8 +51,24 @@ function page(ctx) {
   const reignLink = r => linkTo(ctx, 'abzeichen', { spieler: r.id });
   const longest = reigns.slice().sort((a, b) => b.days - a.days)[0];
 
+  const mLabel = m => { const p = serialToParts(m); return monthLabel(p.y, p.mo); };
+  const mRange = (from, to) => `${day(from)}..${day(to - 1)}`;
+  const months = A.monthly.filter(m => m.riser || m.leader);
+  const monthRows = () => months.map(m => [mLabel(m.from), m.riser ? [nameOf(ctx, m.riser.id), ' ', h('span', { class: 'up' }, fmt.signed(m.riser.gain))] : '–', m.leader ? nameOf(ctx, m.leader) : '–']);
+  const monthLinks = () => months.map(m => linkTo(ctx, 'rangliste', {}, { range: mRange(m.from, m.to) }));
+  const rm = A.runningMonth;
+
   return [
     head,
+    h('h3', { class: 'sec' }, 'Monatssieger'),
+    rm ? h('a', { class: 'running tap', ...linkTo(ctx, 'rangliste', {}, { range: 'monat' }) },
+      h('span', { class: 'run-label' }, `${mLabel(rm.from)} · läuft noch`),
+      h('span', { class: 'run-who' }, rm.riser ? `${nameOf(ctx, rm.riser.id)} führt mit ${fmt.signed(rm.riser.gain)} aus ${rm.riser.games} Spielen` : `Noch hat niemand ${cfg.monthly_min_games} Spiele in diesem Monat.`),
+      h('span', { class: 'run-sub' }, `${rm.leader ? `Gerade auf Platz 1: ${nameOf(ctx, rm.leader)}. ` : ''}Entschieden wird am Monatsende.`)) : null,
+    months.length ? [
+      plainTable(['Monat', 'Aufsteiger', 'Platz 1 am Ende'], monthRows().slice(0, SHOW), [], monthLinks().slice(0, SHOW)),
+      months.length > SHOW ? tableView(`Alle ${months.length} Monate`, ['Monat', 'Aufsteiger', 'Platz 1 am Ende'], monthRows(), [], monthLinks()) : null,
+    ] : h('p', { class: 'empty' }, 'Noch ist kein Monat mit einem Sieger vorbei.'),
     h('h3', { class: 'sec' }, 'Aufsteiger der Woche'),
     h('div', { class: 'running' },
       h('span', { class: 'run-label' }, `${run ? weekLabel(run.from) : 'Diese Woche'} · läuft noch`),

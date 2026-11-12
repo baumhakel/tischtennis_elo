@@ -17,6 +17,9 @@ export const ranks = {
     const rank = new Int16Array(N * n), leader = new Int32Array(N).fill(-1), last = new Int32Array(N).fill(-1);
     const pool = new Int32Array(N);
     const inPool = [];
+    if (elo.prior) {   // a window (Zeitraum): everyone enters with their rating and games from before
+      for (let k = 0; k < n; k++) { r[k] = elo.start[k]; played[k] = elo.prior[k]; if (played[k] >= need) inPool.push(k); }
+    }
     for (let g = 0; g < N; g++) {
       const d = elo.perGame.delta[g];
       for (let s = 0; s < 4; s++) {

@@ -8,6 +8,10 @@ import { focusLegend, tile, nameOf, linkTo } from './common.js';
 import { recentGames } from './games.js';
 import { SNOOZE_DAYS } from '../app/me.js';
 import { earnedCard, newestOf, collectionLink } from './badges.js';
+import { shareButton } from '../ui/share.js';
+import { boardSpec } from './share-cards.js';
+import { reviewSeason } from './review-logic.js';
+import { forecastTeaser, chance } from './forecast-logic.js';
 
 export default {
   id: 'dashboard',
@@ -24,7 +28,7 @@ export default {
     let chart = null;
 
     function update(c) {
-      render(meBox, c.me.ask ? askCard(c) : c.me.id ? [meCard(c), meBadge(c)] : null);
+      render(meBox, c.me.ask ? askCard(c) : c.me.id ? [meCard(c), meBadge(c)] : null, reviewTeaser(c));
       render(tiles, highlights(c));
       render(legend, focusLegend(c));
       const spec = curves(c);
@@ -53,6 +57,24 @@ function askCard(ctx) {
       h('button', { type: 'button', class: 'small', onclick: () => { if (sel.value) set({ choice: 'player', id: sel.value }); } }, 'Das bin ich'),
       h('button', { type: 'button', class: 'secondary small', onclick: () => set({ choice: 'observer', id: null }) }, 'Ich schaue nur zu'),
       h('button', { type: 'button', class: 'link', onclick: () => set({ snoozeUntil: Date.now() + SNOOZE_DAYS * 864e5 }) }, 'Später')));
+}
+
+/** In the Jahresrückblick season (config): a small card, dismissible per year on this device. */
+const TEASER_KEY = 'tt-elo-review-hidden';
+function reviewTeaser(ctx) {
+  const { inSeason, year } = reviewSeason(ctx.baseModel.dataset.config, ctx.now);
+  let hidden = null;
+  try { hidden = localStorage.getItem(TEASER_KEY); } catch { /* storage unavailable */ }
+  if (!inSeason || hidden === String(year)) return null;
+  const box = h('div', { class: 'teaser' },
+    h('a', { class: 'teaser-link tap', ...linkTo(ctx, 'rueckblick', { jahr: String(year) }) },
+      h('span', { class: 'teaser-kicker' }, `Jahresrückblick ${year}`),
+      h('span', { class: 'teaser-text' }, ctx.me?.id ? 'Dein Jahr in Karten: Spiele, Elo, Überraschungen, Abzeichen' : 'Das Jahr der Runde in Karten')),
+    h('button', { type: 'button', class: 'teaser-close', 'aria-label': 'Ausblenden', onclick: () => {
+      try { localStorage.setItem(TEASER_KEY, String(year)); } catch { /* ignore */ }
+      box.remove();
+    } }, '×'));
+  return box;
 }
 
 /** Newest Abzeichen under the „Ich“ card; „neu“ if earned since the app was last opened. No pop-ups. */
@@ -147,7 +169,12 @@ function highlights(ctx) {
     sub: Number.isFinite(mv.percentile) ? `bewegter als ${Math.round(mv.percentile)} % der bisherigen Zeit` : 'Noch zu wenige Spiele.',
     link: linkTo(ctx, 'movement'),
   });
-  return [rising, streak, upset, movement];
+  // Prognose (Phase 14): only once it is computed and there is still something to play for
+  const fc = forecastTeaser(ctx.forecast);
+  const prognose = fc ? tile({ label: `Prognose: Platz 1 ${fc.label}`, value: chance(fc.p1), who: ctx.names.get(fc.id) ?? fc.id,
+    sub: 'Chance laut Simulation des restlichen Monats', link: linkTo(ctx, 'prognose') }) : null;
+  prognose?.classList.add('tile-wide');
+  return [rising, streak, upset, movement, prognose];
 }
 
 export const teamNames = (ctx, ids) => ids.map(id => ctx.names.get(id) ?? id).join(' & ');
@@ -207,7 +234,7 @@ function leaderboard(ctx) {
       h('td', { class: 'num wide muted' }, fmt.ago(r.lastT, ctx.now)));
   });
   return h('section', { class: 'board' },
-    h('h2', {}, 'Rangliste'),
+    h('div', { class: 'view-head' }, h('h2', {}, 'Rangliste'), h('a', { class: 'head-link', ...linkTo(ctx, 'rangliste') }, 'Monat, Jahr …'), shareButton(() => boardSpec(ctx), { name: 'rangliste' })),
     h('table', {},
       h('thead', {}, h('tr', {},
         h('th', { class: 'rank' }, h('span', { class: 'sr' }, 'Rang')),

@@ -15,10 +15,11 @@ import { matrices, partners } from './matrices.js';
 import { movement, upsets, calibration } from './league.js';
 import { ranks, records } from './records.js';
 import { activity } from './activity.js';
+import { chemistry } from './chemistry.js';
 
 const STATS = [
   form, recent, risingStar, leaderboard, bestRuns, smoothing,
-  matrices, partners, movement, upsets, calibration, ranks, records, activity,
+  matrices, partners, movement, upsets, calibration, ranks, records, activity, chemistry,
 ];
 export const REGISTRY = new Map(STATS.map(s => [s.name, s]));
 

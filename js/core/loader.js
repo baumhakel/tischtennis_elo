@@ -11,7 +11,7 @@
 
 import { COLUMNS, OPTIONAL_COLUMNS, CONFIG_DEFAULTS, TABS } from '../config.js';
 import {
-  clean, norm, toBool, toNumber, parseTime, roundSerial, formatRef, readTable, cell, fnv1a,
+  clean, norm, toBool, toNumber, parseTime, roundSerial, formatRef, serialToParts, readTable, cell, fnv1a,
 } from './normalize.js';
 
 /** @typedef {import('../types.js').RawSheets} RawSheets */
@@ -177,6 +177,13 @@ function parseConfigValue(def, v) {
     case 'names': {  // text list, comma separated
       const parts = (Array.isArray(v) ? v : String(v).split(',')).map(x => clean(x)).filter(Boolean);
       return parts.length ? parts : undefined;
+    }
+    case 'monthday': {  // a day of the year: "12-01" or "01.12." as text, or a date cell (the year is ignored)
+      if (typeof v === 'number' && Number.isFinite(v)) { const p = serialToParts(v); return [p.mo, p.d]; }
+      const s = Array.isArray(v) ? v.map(x => String(x).padStart(2, '0')).join('-') : String(v).trim();
+      let m = /^(\d{1,2})-(\d{1,2})$/.exec(s), mo, d;
+      if (m) { mo = +m[1]; d = +m[2]; } else if ((m = /^(\d{1,2})\.(\d{1,2})\.?$/.exec(s))) { d = +m[1]; mo = +m[2]; } else return undefined;
+      return mo >= 1 && mo <= 12 && d >= 1 && d <= 31 ? [mo, d] : undefined;
     }
     case 'url': {
       const s = String(v).trim();

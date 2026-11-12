@@ -13,6 +13,8 @@
 //   byGame:  Map g → [{ id, badge, level }]       (g = index in the pooled games)
 //   weekly:  [{ from, to, id|null, gain, games }]  completed calendar weeks, newest first
 //   running: the same for the current week (leader so far, not awarded) or null
+//   monthly: [{ from, to, riser: {id, gain, games}|null, leader: id|null }]  completed months, newest first
+//   runningMonth: the current month the same way (riser so far, leader now) or null
 //   detail(id): the state now for „Was fehlt“ (opponents, partners, streaks, this week, Platz)
 //   ranking: [{id, rating}] Platz by the badge rules now · modeRanks: the same for king_single / king_double
 //   reigns:  [{ id, from, to, days, current }]     Platz 1 over time, newest first
@@ -41,6 +43,8 @@ export const BADGES = {
   elo:         { levels: 'achievement_elo_levels' },
   rocket:      { single: true },
   rising_star: { levels: 'achievement_rising_star_levels' },
+  month_riser: { levels: 'achievement_monthly_levels' },
+  month_leader:{ single: true },
   nemesis:     { single: true },
   revenge:     { single: true },
   balanced:    { levels: 'achievement_balanced_levels' },
@@ -58,6 +62,8 @@ export const BADGES = {
   even:        { single: true },
   jubilee:     { single: true },
 };
+
+import { serialToParts, serialFromParts } from './normalize.js';
 
 const DAY = 1, WEEKDAY0 = 5;                     // serial 0 = Saturday; (d + 5) % 7 → Monday = 0
 const weekOf = t => Math.floor(t) - ((Math.floor(t) + WEEKDAY0) % 7);
@@ -166,6 +172,9 @@ export function computeAchievements(pooled, modes = {}, now = Infinity) {
 
   // ── weekly gains (Aufsteiger der Woche, calendar weeks) ──
   const weeks = new Map();   // weekStart → Map k → { start, end, games }
+  const months = new Map();  // first day of the month → Map k → { start, end, games, played }
+  const monthCache = new Map();
+  const monthOf = t => { const d = Math.floor(t); if (!monthCache.has(d)) { const p = serialToParts(d); monthCache.set(d, serialFromParts(p.y, p.mo, 1)); } return monthCache.get(d); };
 
   for (let g = 0; g < games.length; g++) {
     const x = games[g], t = x.t;
@@ -192,7 +201,7 @@ export function computeAchievements(pooled, modes = {}, now = Infinity) {
     }
 
     // update ratings and counts
-    const wk = weekOf(t);
+    const wk = weekOf(t), mk = monthOf(t);
     const touch = (k, won, ownChance) => {
       const s = S[k];
       if (s.week !== wk) {
@@ -202,10 +211,14 @@ export function computeAchievements(pooled, modes = {}, now = Infinity) {
       if (!weeks.has(wk)) weeks.set(wk, new Map());
       const wr = weeks.get(wk);
       if (!wr.has(k)) wr.set(k, { start: s.rating, end: s.rating, games: 0, played: 0 });
+      if (!months.has(mk)) months.set(mk, new Map());
+      const mr = months.get(mk);
+      if (!mr.has(k)) mr.set(k, { start: s.rating, end: s.rating, games: 0, played: 0 });
       s.rating += won ? delta : -delta;
       s.played++; s.last = t; s.days.add(Math.floor(t));
       if (won) { s.wins++; s.weekWins++; } else { s.losses++; s.weekLost = true; }
       const rec = wr.get(k); rec.end = s.rating; rec.games++; rec.played = s.played;
+      const mrec = mr.get(k); mrec.end = s.rating; mrec.games++; mrec.played = s.played;
       return { won, p: ownChance };
     };
     const info = new Map();
@@ -361,6 +374,39 @@ export function computeAchievements(pooled, modes = {}, now = Infinity) {
     }
   }
 
+  // ── Monatssieger (Phase 13): Monatsaufsteiger and Platz 1 am Monatsende, completed months only ──
+  const nextMonth = m => { const p = serialToParts(m); return p.mo === 12 ? serialFromParts(p.y + 1, 1, 1) : serialFromParts(p.y, p.mo + 1, 1); };
+  const leaderAt = T => { const r = reigns.find(x => x.from <= T && (x.current ? T <= now : T < x.to)); return r ? r.k : null; };
+  const monthly = [];
+  let runningMonth = null;
+  const mKeys = [...months.keys()].sort((a, b) => a - b);
+  if (mKeys.length) {
+    for (let m = mKeys[0]; m <= now; m = nextMonth(m)) {
+      const to = nextMonth(m), rec = months.get(m) || new Map();
+      let win = null;
+      for (const [k, r] of rec) {
+        if (r.games < cfg.monthly_min_games || r.played < minR) continue;
+        const gain = r.end - r.start;
+        if (gain <= 0) continue;
+        if (!win || gain > win.gain || (gain === win.gain && r.games > win.games)) win = { k, gain, games: r.games };
+      }
+      const riser = win ? { id: elo.ids[win.k], gain: win.gain, games: win.games } : null;
+      if (to > now) {
+        const lk = leaderAt(now);
+        runningMonth = { from: m, to, riser, leader: lk == null ? null : elo.ids[lk] };
+        break;
+      }
+      const lk = leaderAt(to - 1e-6);   // the last moment of the month
+      monthly.push({ from: m, to, riser, leader: lk == null ? null : elo.ids[lk] });
+      if (win) {
+        const c = (V[win.k].month_riser || 0) + 1;
+        V[win.k].month_riser = c;
+        award(win.k, 'month_riser', lvl('month_riser', c), to);
+      }
+      if (lk != null) { V[lk].month_leader = (V[lk].month_leader || 0) + 1; award(lk, 'month_leader', 1, to); }
+    }
+  }
+
   // ── Einzel- / Doppelkönig: Platz 1 in the Wertung Einzel / Doppel ──
   const modeRanks = {};    // badge rules' ranking now, per mode league (for „Was fehlt“)
   const refIdx = new Map(games.map((x, g) => [x.ref + '|' + x.winners.join() + '|' + x.losers.join(), g]));
@@ -417,6 +463,7 @@ export function computeAchievements(pooled, modes = {}, now = Infinity) {
       weekdays: [...s.weekdays].sort(),
       rank: rankNow.findIndex(r => r.id === id) + 1 || null,          // Platz by the badge rules, null = not ranked
       rankedGames: minR, rankedDays: active,
+      month: (() => { const r = Number.isFinite(now) ? months.get(monthOf(now))?.get(k) : null; return r ? { gain: r.end - r.start, games: r.games } : null; })(),
     };
   };
 
@@ -428,7 +475,7 @@ export function computeAchievements(pooled, modes = {}, now = Infinity) {
   const levels = LV;
   return {
     players, byGame, levels, detail, ranking: rankNow, modeRanks,
-    weekly: weekly.reverse(), running,
+    weekly: weekly.reverse(), running, monthly: monthly.reverse(), runningMonth,
     reigns: reigns.map(r => ({ id: elo.ids[r.k], from: r.from, to: r.to, days: r.days, current: !!r.current })).reverse(),
   };
 }

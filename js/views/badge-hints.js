@@ -146,6 +146,20 @@ export function hintsFor(cfg, A, b, id, env) {
       if (!ranked && d.played < d.rankedGames) lines.push(`Außerdem braucht es ${d.rankedGames} Spiele insgesamt.`);
       break;
     }
+    case 'month_riser': {
+      const r = A.runningMonth;
+      lines.push(d.month ? `Diesen Monat: ${fmt.signed(d.month.gain)} aus ${pl(d.month.games, 'Spiel', 'Spielen')} (nötig: ${cfg.monthly_min_games}).` : 'Diesen Monat noch kein Spiel.');
+      if (r?.riser && r.riser.id !== id) lines.push(`Es führt ${nameOf(r.riser.id)} mit ${fmt.signed(r.riser.gain)}.`);
+      else if (r?.riser?.id === id) lines.push('Führt diesen Monat. Entschieden wird am Monatsende.');
+      if (!ranked && d.played < d.rankedGames) lines.push(`Außerdem braucht es ${d.rankedGames} Spiele insgesamt.`);
+      break;
+    }
+    case 'month_leader': {
+      lines.push(rankLine());
+      if (top?.id === id) lines.push('Gerade auf Platz 1. Zählt, wer am letzten Tag des Monats um Mitternacht vorne liegt.');
+      else if (top && ranked) lines.push(`Bis Platz 1 fehlen ${fmt.int(Math.ceil(top.rating - d.rating))} Punkte. Entschieden wird am Monatsende.`);
+      break;
+    }
     case 'nemesis': {
       if (!d.nemesis) { lines.push(`Noch kein Angstgegner (es braucht ${cfg.h2h_min_games} Begegnungen mit jemandem).`); break; }
       const o = opp.find(x => x.id === d.nemesis);

@@ -12,8 +12,13 @@ import { createPipeline } from './app/pipeline.js';
 import { createRouter } from './app/router.js';
 import { createShell } from './ui/shell.js';
 import { modelFor } from './app/modes.js';
+import { windowModel } from './app/window.js';
+import { windowRange } from './core/window.js';
+import { viewById } from './views/index.js';
 import { loadMe, saveMe, resolveMe } from './app/me.js';
 import { scheduleAchievements, peekAchievements } from './app/achievements.js';
+import { scheduleForecast, peekForecast } from './app/forecast.js';
+import { scheduleLab } from './app/lab.js';
 
 const demoParam = new URLSearchParams(location.search).get('demo');
 const demo = demoParam !== null;
@@ -68,19 +73,25 @@ const router = createRouter({
   store,
   el: shell.viewEl,
   renderEmpty: shell.renderEmpty,
+  renderEmptyWindow: shell.renderEmptyWindow,
   makeCtx(state) {
     const base = state.data.model;
     if (!base) return null;
     const filters = resolveFilters(state.filters, base.dataset.config);
-    const model = modelFor(base, filters.mode);          // views only ever see the current mode's model
+    const full = modelFor(base, filters.mode);          // views only ever see the current mode's model
+    const def = viewById(state.view);
+    const range = def?.zeit ? windowRange(filters.range, full.stats.now) : null;
+    const model = range ? windowModel(full, range) : full;   // Zeitraum: the games in the window (core/window.js)
     const t = model.stats.now;
     const names = new Map([...model.dataset.players.values()].map(p => [p.id, clean(p.name)]));
     const vis = visible(model.dataset, model.elo, filters, t);
     const me = resolveMe(state.me, base.dataset.players, state.auth.email);
     return {
       badges: peekAchievements(base),                       // null until computed in the background
+      forecast: peekForecast(full),                         // Prognose of this mode, null until ready
       badgeSeen: me.id && me.id in bootSeen ? bootSeen[me.id] : Infinity,   // „neu“ = earned after this
-      state, model, baseModel: base, mode: filters.mode, filters, params: state.params, now: t, names,
+      state, model, baseModel: base, fullModel: full, mode: filters.mode, filters, params: state.params, now: t, names,
+      window: range ? { ...range, empty: model.dataset.games.length === 0 } : null,
       visible: vis, me,
       focus: resolveFocus(filters, model.elo, vis, model.dataset.config, me.id),
       navigate: actions.navigate, setParams: actions.setParams, setFilters: actions.setFilters, actions,
@@ -121,6 +132,18 @@ store.subscribe((s, prev) => {
       markSeen();
     });
   } else if (s.me !== prev.me || s.auth.email !== prev.auth.email) markSeen();
+  // Prognose of the current mode, in a worker (app/forecast.js); also after a mode change
+  if (s.data.model && (s.data.model !== prev.data.model || s.filters.mode !== prev.filters.mode)) {
+    const base = s.data.model;
+    const full = modelFor(base, resolveFilters(s.filters, base.dataset.config).mode);
+    scheduleForecast(full, marker => { if (store.get().data.model === base) store.set({ data: { forecastFor: marker } }); });
+  }
+  // Labor bootstrap: only while the Labor page is open (app/lab.js; no-op once started for this model)
+  if (s.data.model && s.view === 'labor') {
+    const base = s.data.model;
+    const full = modelFor(base, resolveFilters(s.filters, base.dataset.config).mode);
+    scheduleLab(full, marker => { if (store.get().data.model === base) store.set({ data: { labFor: marker } }); });
+  }
 });
 
 // auth state into the store

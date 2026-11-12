@@ -4,11 +4,13 @@ import * as fmt from '../ui/format.js';
 import { seriesColor, css, withAlpha } from '../ui/colors.js';
 import { ratingSeries, smoothSeries } from '../ui/series.js';
 import { lineChart } from '../ui/charts/line.js';
-import { tile, viewHead, nameOf, byName, tableView, linkTo, modeNote, missingInMode, MODE_WORD } from './common.js';
+import { tile, viewHead, nameOf, byName, tableView, linkTo, modeNote, missingInMode, MODE_WORD, chemValue, chemRange } from './common.js';
 import { ownRange } from './insights.js';
 import { formatRef } from '../core/normalize.js';
 import { opponents, partnersOf } from './duels.js';
 import { recentGames } from './games.js';
+import { shareButton } from '../ui/share.js';
+import { playerSpec } from './share-cards.js';
 import { earnedCard, newestOf, nextGoals, collectionLink, goalRow } from './badges.js';
 import { earnedCount, totalLevels } from './badge-defs.js';
 
@@ -36,7 +38,7 @@ export default {
       if (k === undefined) k = c.focus.slots.find(x => x != null) ?? candidates[0];
       if (k === undefined) { render(head, h('p', { class: 'empty' }, 'Keine Spieler sichtbar.')); return; }
 
-      render(head, viewHead(nameOf(c, k), null, { key: 'player', info: [
+      render(head, viewHead(nameOf(c, k), null, { key: 'player', share: shareButton(() => playerSpec(c, elo.ids[k]), { name: nameOf(c, k) }), info: [
         'Treppenlinie: Elo-Wert nach jedem Spiel. Glatte Linie mit Band: geglätteter Verlauf (wie unter „Verlauf“, „Geglättet“).',
         `Angst- und Lieblingsgegner: niedrigste und höchste Siegquote gegen jemanden, ab ${c.model.dataset.config.h2h_min_games} Begegnungen. Bester Partner: meiste Siege über Erwartung pro Doppel, ab ${c.model.dataset.config.team_min_games} gemeinsamen Doppeln.`,
         'Tippe auf eine Kachel oder Zeile für die Spiele dahinter.'] }),
@@ -180,18 +182,22 @@ function partners(ctx, k) {
   const par = partnersOf(model, k).filter(p => !ctx.visible.inactive.has(p.j));
   if (!par.length) return [h('h2', {}, 'Doppelpartner'), h('p', { class: 'muted' }, 'Noch kein Doppel gespielt.')];
   const enough = par.filter(p => p.n >= cfg.team_min_games);
-  const best = enough.slice().sort((a, b) => b.perGame - a.perGame)[0];
+  const chem = model.stats.get('chemistry').tau2 > 0;
+  // with detectable chemistry: the best shrunk chemistry, else the best Siegquote together
+  const best = enough.slice().sort((a, b) => (chem ? b.est - a.est : b.ratio - a.ratio) || b.n - a.n)[0];
   const often = par[0];
   const team = j => linkTo(ctx, 'team', { a: model.elo.ids[k], b: model.elo.ids[j] });
   return [
     h('h2', {}, 'Doppelpartner'),
     h('div', { class: 'tiles' },
-      best ? tile({ label: 'Bester Partner', value: fmt.signed(best.perGame, 1).replace('±0,0', '±0'), who: nameOf(ctx, best.j),
-        sub: `Siege über Erwartung pro Spiel, ${best.n} Doppel zusammen`, link: team(best.j) })
-        : tile({ label: 'Bester Partner', value: '–', sub: `mit niemandem ${cfg.team_min_games} Doppel zusammen` }),
+      !best ? tile({ label: 'Bester Partner', value: '–', sub: `mit niemandem ${cfg.team_min_games} Doppel zusammen` })
+        : chem ? tile({ label: 'Bester Partner', value: chemValue(best.est), tone: best.lo > 0 ? 'up' : best.hi < 0 ? 'down' : null, who: nameOf(ctx, best.j),
+            sub: `Teamchemie pro 100 Doppel (${chemRange(best.lo, best.hi)}), ${best.n} Doppel zusammen`, link: team(best.j) })
+        : tile({ label: 'Beste Siegquote zusammen', value: fmt.pct(best.ratio), who: nameOf(ctx, best.j),
+            sub: `${best.n} Doppel zusammen. Echte Teamchemie ist in den Daten nicht nachweisbar.`, link: team(best.j) }),
       tile({ label: 'Häufigster Partner', value: String(often.n), who: nameOf(ctx, often.j), sub: `Doppel zusammen, Siegquote ${fmt.pct(often.ratio)}`, link: team(often.j) })),
-    tableView('Alle Partner anzeigen', ['Partner', 'Doppel', 'Siege', 'Siegquote', 'Über Erwartung'],
-      par.map(p => [nameOf(ctx, p.j), String(p.n), String(p.wins), fmt.pct(p.ratio), fmt.signed(p.chem, 1)]),
+    tableView('Alle Partner anzeigen', ['Partner', 'Doppel', 'Siege', 'Siegquote', chem ? 'Teamchemie' : 'Über Erwartung'],
+      par.map(p => [nameOf(ctx, p.j), String(p.n), String(p.wins), fmt.pct(p.ratio), chem ? chemValue(p.est) : fmt.signed(p.chem, 1)]),
       [1, 2, 3, 4], par.map(p => team(p.j))),
   ];
 }

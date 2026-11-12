@@ -1,6 +1,6 @@
 // Static app constants. No side effects: safe to import from core/ (browser, worker, Node).
 
-export const APP_VERSION = '2.0.0-dev.8';   // bump to invalidate the browser cache
+export const APP_VERSION = '2.0.0-dev.12';   // bump to invalidate the browser cache
 
 // >>> FILL IN: OAuth client ID (ends in .apps.googleusercontent.com)
 export const CLIENT_ID = '975581090195-pgfv9ptq40fkp728151hqpru116pg732.apps.googleusercontent.com';
@@ -128,6 +128,22 @@ export const CONFIG_DEFAULTS = {
   achievement_balance_min_games: { type: 'integer', value: 50,   min: 2 },
   achievement_jubilee_games:     { type: 'integer', value: 100,  min: 1 },
   session_gap_minutes:           { type: 'integer', value: 20,   min: 1 },   // Abzeichen (Marathon), later the Labor
+  // Phase 15: Jahresrückblick season (teaser on the Übersicht); from > until wraps the new year
+  year_review_from:              { type: 'monthday', value: [12, 1] },
+  year_review_until:             { type: 'monthday', value: [1, 31] },
+  // Phase 13: Zeitraum and Monatssieger
+  default_time_range:            { type: 'enum',    value: 'gesamt', options: ['gesamt', 'monat', 'vormonat', 'jahr'] },
+  monthly_min_games:             { type: 'integer', value: 10,   min: 1 },   // Monatsaufsteiger: games in the month
+  achievement_monthly_levels:    { type: 'list',    value: [1, 3, 6], min: 1 },   // Monatsaufsteiger: how often, per level
+  // Phase 14: Prognose (Monte Carlo to the month end)
+  forecast_simulations:          { type: 'integer', value: 10000, min: 100 },  // runs for the Prognose page
+  forecast_quick_simulations:    { type: 'integer', value: 1000, min: 100 },   // runs per Spitzenspiel pairing and backtest point
+  forecast_rate_days:            { type: 'integer', value: 28,   min: 1 },     // pace (games per workday) from these last days
+  forecast_uncertainty_scale:    { type: 'number',  value: 1.0,  min: 0 },     // × spread of the Elo-Wert (0 = Elo-Wert is the true strength)
+  // Phase 16: Labor
+  lab_hot_hand_streak:           { type: 'integer', value: 3,    min: 1 },     // Hot / Cold Hand: games after this many wins / losses in a row
+  lab_null_simulations:          { type: 'integer', value: 500,  min: 50 },    // made-up histories for the comparison with chance
+  lab_min_samples:               { type: 'integer', value: 30,   min: 1 },     // games per group before an analysis is shown
 };
 
 // ───────── Technical constants (not in the config tab) ─────────

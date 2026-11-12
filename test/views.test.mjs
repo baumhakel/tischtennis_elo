@@ -118,7 +118,7 @@ test('duels: opponents/partners consistent with elo; duel counts and probability
   const par = partnersOf(model, k);
   assert.equal(par.reduce((s, p) => s + p.n, 0), elo.doubles[k]);
   const teams = bestTeams(model, ks, 1);
-  for (let i = 1; i < teams.length; i++) assert.ok(teams[i - 1].perGame >= teams[i].perGame);
+  for (let i = 1; i < teams.length; i++) assert.ok(teams[i - 1].est >= teams[i].est);   // shrunk chemistry (Phase 16)
   const other = elo.ids[opp[0].j];
   const dd = duel(model, [id], [other]);
   assert.equal(dd.aWins + dd.bWins, dd.games.length);
@@ -130,4 +130,27 @@ test('duels: opponents/partners consistent with elo; duel counts and probability
   // singles between the two = singles part of the pair matrix (full games)
   const singles = d.games.filter(g => !g.double && [...g.winners, ...g.losers].includes(id) && [...g.winners, ...g.losers].includes(other)).length;
   assert.equal(dd.singles, singles);
+});
+
+import { shrinkToZero, chiSquareUpper } from '../js/core/stats/util.js';
+test('Teamchemie: χ² tail, shrinkage, stat consistent with the raw residuals', () => {
+  assert.ok(Math.abs(chiSquareUpper(3.841, 1) - 0.05) < 1e-3);
+  assert.ok(Math.abs(chiSquareUpper(18.307, 10) - 0.05) < 1e-3);
+  // no heterogeneity → τ² = 0, everything shrunk to 0
+  const none = shrinkToZero([0.01, -0.02, 0.0], [0.05, 0.05, 0.05]);
+  assert.equal(none.tau2, 0);
+  assert.deepEqual(none.est, [0, 0, 0]);
+  // clear heterogeneity → τ² > 0, estimates between 0 and the raw value, more shrinkage for larger v
+  const big = shrinkToZero([0.5, -0.5, 0.4, 0.4], [0.01, 0.01, 0.01, 0.1]);
+  assert.ok(big.tau2 > 0 && big.p < 0.01);
+  assert.ok(big.est[0] > 0 && big.est[0] < 0.5);
+  assert.ok(big.est[2] / 0.4 > big.est[3] / 0.4);
+  const C = model.stats.get('chemistry');
+  const n = elo.ids.length;
+  for (const t of C.teams) {
+    const c = t.i * n + t.j;
+    assert.equal(t.n, elo.partner.games[c]);
+    assert.ok(Math.abs(t.raw - (elo.partner.wins[c] - elo.partner.expected[c]) / t.n) < 1e-9);
+    assert.ok(t.lo <= t.est && t.est <= t.hi);
+  }
 });

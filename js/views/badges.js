@@ -7,6 +7,8 @@ import * as fmt from '../ui/format.js';
 import { viewHead, plainTable, tableView, linkTo } from './common.js';
 import { medal } from '../ui/medal.js';
 import { hintsFor } from './badge-hints.js';
+import { shareButton } from '../ui/share.js';
+import { collectionSpec } from './share-cards.js';
 import { DEFS, ORDER, CATEGORIES, SCOPE, tierName, badgeLabel, badgeHasLevels, progressOf, badgeStats, earnedCount, totalLevels, noteOf } from './badge-defs.js';
 
 export default {
@@ -274,7 +276,7 @@ function collection(ctx, A, id) {
   const newest = newestOf(p).slice(0, 3);
   const goals = nextGoals(cfg, A, p, 3);
   return [
-    viewHead(isMe ? 'Deine Abzeichen' : `Abzeichen von ${nameOfId(ctx, id)}`, `${earnedCount(p)} von ${total} Stufen`, { back: true, key: 'collection', info: [RULE, 'Der Balken zeigt, wie weit es noch bis zur nächsten Stufe ist.'] }),
+    viewHead(isMe ? 'Deine Abzeichen' : `Abzeichen von ${nameOfId(ctx, id)}`, `${earnedCount(p)} von ${total} Stufen`, { back: true, key: 'collection', share: shareButton(() => collectionSpec(ctx, id), { name: 'abzeichen-' + nameOfId(ctx, id) }), info: [RULE, 'Der Balken zeigt, wie weit es noch bis zur nächsten Stufe ist.'] }),
     h('nav', { class: 'links' }, h('a', { class: 'tap', ...linkTo(ctx, 'player', { id }) }, isMe ? 'Dein Profil' : `Profil von ${nameOfId(ctx, id)}`),
       h('a', { class: 'tap', ...linkTo(ctx, 'abzeichen') }, 'Alle Abzeichen')),
     newest.length ? [h('h3', { class: 'sec' }, 'Zuletzt'),

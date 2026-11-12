@@ -11,7 +11,7 @@ import { VIEWS, viewById, loadView } from '../views/index.js';
  * @param {(state) => any} o.makeCtx              builds the view context (null while no data)
  * @param {(el: HTMLElement, state) => void} o.renderEmpty  shown while there is no data yet
  */
-export function createRouter({ store, el, makeCtx, renderEmpty }) {
+export function createRouter({ store, el, makeCtx, renderEmpty, renderEmptyWindow }) {
   let mounted = null;     // { id, instance }
   let token = 0;          // guards against out-of-order dynamic imports
   let last = {};
@@ -25,9 +25,17 @@ export function createRouter({ store, el, makeCtx, renderEmpty }) {
       last = {};
       return;
     }
-    const deps = { model: state.data.model, filters: state.filters, params: state.params, me: state.me, email: state.auth.email, badges: state.data.badgesFor };
+    if (ctx.window?.empty && def.zeit) {   // Zeitraum without games: one message for every view that follows it
+      if (mounted) { mounted.instance.unmount?.(); mounted = null; }
+      ++token;
+      renderEmptyWindow(el, def, ctx);
+      last = {};
+      document.title = `${def.title} – Tischtennis Elo`;
+      return;
+    }
+    const deps = { model: state.data.model, filters: state.filters, params: state.params, me: state.me, email: state.auth.email, badges: state.data.badgesFor, forecast: state.data.forecastFor, lab: state.data.labFor };
     if (mounted && mounted.id === def.id) {
-      if (deps.model !== last.model || deps.filters !== last.filters || deps.params !== last.params || deps.me !== last.me || deps.email !== last.email || deps.badges !== last.badges) {
+      if (deps.model !== last.model || deps.filters !== last.filters || deps.params !== last.params || deps.me !== last.me || deps.email !== last.email || deps.badges !== last.badges || deps.forecast !== last.forecast || deps.lab !== last.lab) {
         mounted.instance.update?.(ctx);
       }
       last = deps;
@@ -54,7 +62,7 @@ export function createRouter({ store, el, makeCtx, renderEmpty }) {
     el.removeAttribute('aria-busy');
     const fresh = store.get();
     mounted = { id: def.id, instance: view.mount(el, makeCtx(fresh) || ctx) };
-    last = { model: fresh.data.model, filters: fresh.filters, params: fresh.params, me: fresh.me, email: fresh.auth.email, badges: fresh.data.badgesFor };
+    last = { model: fresh.data.model, filters: fresh.filters, params: fresh.params, me: fresh.me, email: fresh.auth.email, badges: fresh.data.badgesFor, forecast: fresh.data.forecastFor, lab: fresh.data.labFor };
     document.title = `${def.title} – Tischtennis Elo`;
   }
 

@@ -9,6 +9,7 @@
 //   await page.waitFor(() => document.title.startsWith('Rangliste'));
 //   const n = await page.evaluate(sel => document.querySelectorAll(sel).length, 'a');
 //   await page.screenshot('out.png');  page.errors → console errors and uncaught exceptions
+//   await page.addInitScript('…');            // runs before the app in every new document
 //   await browser.close();
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
@@ -117,6 +118,8 @@ async function newPage(send, listeners, { width = 390, height = 844, dark = fals
   const page = {
     errors,
     call,
+    /** Run a script in every new document before the page's own scripts (e.g. to record listeners). */
+    addInitScript: source => call('Page.addScriptToEvaluateOnNewDocument', { source }),
     async goto(path) {
       const done = new Promise(ok => { loaded = ok; });
       await call('Page.navigate', { url: new URL(path, BASE).href });

@@ -28,6 +28,7 @@ export function scatter({ points, xLabel, yLabel, ariaLabel, diagonalLabel }) {
     const a = svg('a', { href: p.href, class: 'pt' + (p.highlight ? ' me' : '') });
     if (p.onclick) a.addEventListener('click', p.onclick);
     a.appendChild(svg('title', {}, p.title || p.label));
+    a.appendChild(svg('circle', { cx: sx(p.x), cy: sy(p.y), r: 22, class: 'hit' }));   // invisible: a 44 px touch target around the dot and its name
     a.appendChild(svg('circle', { cx: sx(p.x), cy: sy(p.y), r: 5 }));
     a.appendChild(svg('text', { x: sx(p.x) + 7, y: sy(p.y) + 4, class: 'name' }, p.label));
     root.appendChild(a);

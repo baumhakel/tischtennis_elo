@@ -228,7 +228,7 @@ p { margin: 0 0 var(--s3); }
 .chip .key { width: 14px; height: 3px; border-radius: 2px; }
 .chip .x { color: var(--muted); font-size: 13px; }
 .legend select {
-  font: inherit; font-size: 14px; min-height: 32px; padding: 4px 8px; border-radius: 999px;
+  font: inherit; font-size: 14px; min-height: 44px; padding: 4px 8px; border-radius: 999px;
   border: 1px dashed var(--axis); background: transparent; color: var(--muted);
 }
 .legend .note { font-size: 13px; color: var(--muted); }
@@ -237,7 +237,7 @@ p { margin: 0 0 var(--s3); }
 .toolbar { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s3); align-items: center; margin: 0 0 var(--s3); }
 .toolbar label { font-size: 14px; color: var(--muted); }
 .toolbar select {
-  font: inherit; font-size: 15px; min-height: 36px; padding: 4px 8px; border-radius: 8px;
+  font: inherit; font-size: 15px; min-height: 44px; padding: 4px 8px; border-radius: 8px;
   border: 1px solid var(--line); background: var(--surface); color: var(--ink);
 }
 .view-head { display: flex; align-items: center; gap: var(--s2); margin: var(--s4) 0 var(--s2); }
@@ -309,7 +309,7 @@ table.matrix td:focus-visible { outline-offset: 0; }
 .duel-pick { align-items: center; }
 .duel-pick .side { display: inline-flex; flex-wrap: wrap; gap: var(--s2); align-items: center; }
 .duel-pick .side .key { width: 14px; height: 3px; border-radius: 2px; }
-.duel-pick select { font: inherit; font-size: 15px; min-height: 36px; padding: 4px 8px; border-radius: 8px;
+.duel-pick select { font: inherit; font-size: 15px; min-height: 44px; padding: 4px 8px; border-radius: 8px;
   border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
 .duel-pick .vs { color: var(--muted); font-size: 14px; }
 .upsets .d.down { color: var(--down); }
@@ -342,7 +342,7 @@ table.matrix td:focus-visible { outline-offset: 0; }
 .games .game.neutral .meta { grid-column: 1 / span 2; }
 .list-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2) var(--s4); margin: var(--s2) 0 var(--s4); font-size: 15px; }
 .list-actions .more-link { color: var(--table); text-decoration: none; margin-left: auto; }
-.list-actions button.link { text-decoration: none; min-height: 0; }
+.list-actions button.link { text-decoration: none; }
 @media (prefers-color-scheme: dark) { .list-actions .more-link { color: var(--up); } }
 .recent { margin-bottom: var(--s4); }
 .toolbar .field { display: inline-flex; align-items: center; gap: var(--s2); }
@@ -392,7 +392,7 @@ a.row-link { color: inherit; text-decoration: none; }
 /* matrix: tappable cells and headings */
 table.matrix td.cell-link a { display: block; color: inherit; text-decoration: none; line-height: 28px; }
 table.matrix td.cell-link { cursor: pointer; }
-table.matrix a.head-link { color: inherit; text-decoration: none; }
+table.matrix a.head-link { color: inherit; text-decoration: none; display: inline; min-height: 0; }   /* dense grid: exception to 44 px */
 /* small markers */
 .strong { font-weight: 600; }
 .badge { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-size: 12px; font-weight: 600;
@@ -464,7 +464,7 @@ body.menu-open { overflow: hidden; }
 .menu-section h3 { margin: 0 0 var(--s2); font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
 .menu-section p { margin: 0 0 var(--s2); }
 .menu-actions { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; margin: var(--s2) 0; }
-.menu-actions select { font: inherit; font-size: 15px; min-height: 36px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); max-width: 100%; }
+.menu-actions select { font: inherit; font-size: 15px; min-height: 44px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); max-width: 100%; }
 .menu-links { list-style: none; margin: 0; padding: 0; }
 .menu-links a { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); padding: 12px 18px 12px 0; color: var(--ink); text-decoration: none; border-top: 1px solid var(--line); }
 .menu-links li:first-child a { border-top: 0; }
@@ -517,7 +517,7 @@ body.menu-open { overflow: hidden; }
 /* ── Phase 11: Tisch ── */
 .table-present { margin-top: 0; }
 .table-present select {
-  font: inherit; font-size: 14px; min-height: 32px; padding: 4px 8px; border-radius: 999px;
+  font: inherit; font-size: 14px; min-height: 44px; padding: 4px 8px; border-radius: 999px;
   border: 1px dashed var(--axis); background: transparent; color: var(--muted);
 }
 .splits { display: grid; gap: var(--s2); margin: var(--s3) 0; }
@@ -729,3 +729,29 @@ h3 { font-size: 15px; margin: var(--s4) 0 var(--s2); }
   .games li.fresh > .game { animation: fresh-fade 8s ease-out forwards; }
   @keyframes fresh-fade { 0%, 60% { background: color-mix(in srgb, var(--up) 18%, transparent); } 100% { background: transparent; } }
 }
+
+/* ── Phase 17 tap audit: every target at least 44 × 44 px (test/tap-audit.mjs) ──
+   Compact things keep their look and get a larger invisible touch area (an absolutely placed ::before);
+   controls and buttons simply get the height. Exceptions, on purpose: the cells and name headings of the
+   dense matrices (a 12 × 12 grid can't fit 44 px cells on a phone) and links inside running text. */
+tr.tap-row > td { height: 44px; }
+select, input[type="text"], input[type="number"], input[type="search"], input[type="date"] { min-height: 44px; }
+input[type="range"] { height: 44px; }
+summary { min-height: 44px; box-sizing: border-box; padding-block: 12px; }
+button.small, button.link, .back-link { min-height: 44px; }
+.share-btn { min-height: 44px; min-width: 44px; justify-content: center; }
+.secondary-btn { min-height: 44px; display: inline-flex; align-items: center; box-sizing: border-box; }
+.more-link, .head-link, .me-badge-more { display: inline-flex; align-items: center; min-height: 44px; }
+.run-who.tap { display: flex; align-items: center; min-height: 44px; }
+.xc-lines a.tap, .side-card .players a { min-height: 44px; box-sizing: border-box; }
+.xc-lines a.tap { align-items: center; }
+.band h1 a { display: inline-flex; align-items: center; min-height: 44px; }
+.seg label::before, .chip > button::before, .th-link::before { content: ""; position: absolute; }
+.seg label::before { inset: -4px 0; }
+.chip > button, button.chip { position: relative; }
+.chip > button::before, button.chip::before { content: ""; position: absolute; inset: -7px 0; }
+.chip > .x { min-width: 30px; }
+.chip > .x::before { inset: -7px -7px; }
+.th-link { position: relative; }
+.th-link::before { inset: -14px -6px; }
+.scatter .pt circle.hit { fill: transparent; stroke: none; }

@@ -196,10 +196,10 @@ function detail(ctx, A, b, who) {
     mine,
     h('h3', { class: 'sec' }, s.holders.length ? `Geschafft (${s.holders.length})` : 'Geschafft'),
     s.holders.length
+      // one target per row: the game where the shown level was reached (base prompt: „who has it (→ the game)“)
       ? plainTable(['Spieler', badgeHasLevels(b) ? 'Stufe' : '', 'am'],
-          s.holders.map(x => [nameOfId(ctx, x.id), badgeHasLevels(b) ? tierName(cfg, x.level) : '',
-            x.topG != null ? h('a', { ...gameLinkBase(ctx, x.topG) }, fmt.date(x.top)) : fmt.date(x.top)]),
-          [2], s.holders.map(x => collectionLink(ctx, x.id)))
+          s.holders.map(x => [nameOfId(ctx, x.id), badgeHasLevels(b) ? tierName(cfg, x.level) : '', fmt.date(x.top)]),
+          [2], s.holders.map(x => (x.topG != null ? gameLinkBase(ctx, x.topG) : collectionLink(ctx, x.id))))
       : h('p', { class: 'empty' }, 'Noch hat es niemand geschafft.'),
     close.length ? [h('h3', { class: 'sec' }, 'Am nächsten dran'),
       h('ul', { class: 'goal-list' }, close.map(x => h('li', {}, h('a', { class: 'goal tap', ...linkTo(ctx, 'abzeichen', { id: b, spieler: x.id }) },

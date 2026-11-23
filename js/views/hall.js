@@ -80,7 +80,7 @@ function page(ctx) {
       plainTable(['Woche', 'Aufsteiger', 'Punkte', 'Spiele'], weekRows().slice(0, SHOW), [2, 3], weekLinks.slice(0, SHOW)),
       weeks.length > SHOW ? tableView(`Alle ${weeks.length} Wochen`, ['Woche', 'Aufsteiger', 'Punkte', 'Spiele'], weekRows(), [2, 3], weekLinks) : null,
       most.length ? h('p', { class: 'note-line' }, 'Am häufigsten: ', most.slice(0, 3).map(([id, n], i) => [i ? ', ' : '',
-        h('a', { ...linkTo(ctx, 'abzeichen', { spieler: id }) }, nameOf(ctx, id)), ` (${n}-mal)`])) : null,
+        h('a', { ...linkTo(ctx, 'abzeichen', { id: 'rising_star', spieler: id }) }, nameOf(ctx, id)), ` (${n}-mal)`])) : null,
     ] : h('p', { class: 'empty' }, 'Noch ist keine Woche mit einem Aufsteiger vorbei.'),
     h('h3', { class: 'sec' }, 'Platz 1'),
     reigns.length ? [

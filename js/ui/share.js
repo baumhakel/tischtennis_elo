@@ -28,6 +28,7 @@ const fileName = name => `${name.toLowerCase().replace(/[^a-z0-9äöüß]+/gi, '
 
 export async function openShare(spec, name) {
   close();
+  document.dispatchEvent(new CustomEvent('tt-usage', { detail: 'teilen' }));   // counted by app/usage.js
   const body = h('div', { class: 'share-body' }, h('p', { class: 'muted' }, 'Bild wird gezeichnet …'));
   sheet = h('div', { class: 'share-sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Als Bild teilen' },
     h('div', { class: 'share-backdrop', onclick: close }),

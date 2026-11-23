@@ -253,8 +253,8 @@ export function createShell(root, { store, actions }) {
     // Mitmachen: form links come from the config tab (never from the public code)
     const forms = cfg ? [
       [cfg.form_result_url, 'Ergebnis eintragen', 'ergebnis'],
-      [cfg.form_support_url, 'Problem melden oder Idee einreichen'],
-      [cfg.form_management_url, 'Spieler verwalten'],
+      [cfg.form_support_url, 'Problem melden oder Idee einreichen', 'support'],
+      [cfg.form_management_url, 'Spieler verwalten', 'verwaltung'],
     ].filter(([u]) => u) : [];
     const mitmachen = forms.length ? h('section', { class: 'menu-section', id: 'menu-mitmachen' }, h('h3', {}, 'Mitmachen'),
       h('ul', { class: 'menu-links' }, forms.map(([u, label, form]) =>
@@ -292,6 +292,10 @@ export function createShell(root, { store, actions }) {
         h('p', {}, 'Jeder hat einen Elo-Wert (Start 1400). Nach jedem Spiel bekommt der Sieger Punkte, der Verlierer verliert gleich viele: umso mehr, je unwahrscheinlicher der Sieg laut den Werten vorher war. Im Doppel zählt der Mittelwert der beiden Partner.'),
         h('p', {}, '„Alle“ wertet Einzel und Doppel zusammen, „Einzel“ und „Doppel“ sind eigene Wertungen mit eigenen Elo-Werten.'),
         h('p', {}, 'Wer weniger Spiele als die Mindestanzahl hat, steht vorläufig in der Liste, wer länger nicht gespielt hat, wird ausgeblendet. Beides lässt sich unter „Filter“ ändern und ändert nie die Elo-Werte.')),
+      s.usage?.configured ? h('p', { class: 'muted small' }, s.usage.off
+        ? ['Die Nutzungszählung ist auf diesem Gerät aus. ', h('button', { class: 'link', type: 'button', onclick: () => actions.setUsageOff(false) }, 'Wieder einschalten')]
+        : ['Die App zählt anonym, welche Seiten wie oft geöffnet werden: eine Zeile pro Gerät und Tag, mit einer zufälligen Gerätenummer, ohne Namen und Konten. Das hilft beim Aufräumen. ',
+          h('button', { class: 'link', type: 'button', onclick: () => actions.setUsageOff(true) }, 'Auf diesem Gerät ausschalten')]) : null,
       h('p', { class: 'muted small' }, `Version ${APP_VERSION}`));
 
     filterSection.hidden = !model;

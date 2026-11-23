@@ -11,6 +11,7 @@
 //   notice:  null | { kind, refs }                  after entering a result (app/after-entry.js)
 //   fresh:   null | [game_ref…]                     games just arrived, marked in the lists for a moment
 //   install: null | 'prompt' | 'ios'               what „Als App installieren“ offers (app/install.js)
+//   usage:   { configured, off }                    usage counting (app/usage.js), for the line in the menu
 // }
 // model = { dataset, elo, stats } once loaded.
 
@@ -25,6 +26,7 @@ export function initialState() {
     notice: null,
     fresh: null,
     install: null,
+    usage: { configured: false, off: false },
   };
 }
 

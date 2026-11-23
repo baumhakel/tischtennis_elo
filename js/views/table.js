@@ -107,7 +107,11 @@ function page(ctx, rerender) {
 
 // ── preview of one game: chance, and what each result would do ──
 
+let lastPreview = '';   // usage counting: one count per new pairing, not per re-render
+
 function preview(ctx, A, B, name, set) {
+  const pairing = [[...A].sort().join('+'), [...B].sort().join('+')].sort().join('|');
+  if (pairing !== lastPreview) { lastPreview = pairing; document.dispatchEvent(new CustomEvent('tt-usage', { detail: 'tisch-vorschau' })); }
   const type = A.length > 1 ? 'doppel' : 'einzel';
   const typeWord = type === 'doppel' ? 'Doppel' : 'Einzel';
   // the Wertung shown first, and the other Wertung this game also counts in

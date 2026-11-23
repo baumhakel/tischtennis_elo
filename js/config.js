@@ -1,6 +1,6 @@
 // Static app constants. No side effects: safe to import from core/ (browser, worker, Node).
 
-export const APP_VERSION = '2.0.0-dev.14';   // bump to invalidate the browser cache
+export const APP_VERSION = '2.0.0-dev.15';   // bump to invalidate the browser cache
 
 // >>> FILL IN: OAuth client ID (ends in .apps.googleusercontent.com)
 export const CLIENT_ID = '975581090195-pgfv9ptq40fkp728151hqpru116pg732.apps.googleusercontent.com';
@@ -92,6 +92,12 @@ export const CONFIG_DEFAULTS = {
   form_result_entry_winner2:     { type: 'string',  value: '', optional: true },
   form_result_entry_loser1:      { type: 'string',  value: '', optional: true },
   form_result_entry_loser2:      { type: 'string',  value: '', optional: true },
+  // Phase 17: usage counting (app/usage.js) via the hidden „Nutzung“ form. optional: empty = no counting
+  form_usage_url:                { type: 'url',     value: '', optional: true },
+  form_usage_entry_device:       { type: 'string',  value: '', optional: true },
+  form_usage_entry_date:         { type: 'string',  value: '', optional: true },
+  form_usage_entry_version:      { type: 'string',  value: '', optional: true },
+  form_usage_entry_counts:       { type: 'string',  value: '', optional: true },
   suggestions_count:             { type: 'integer', value: 5,    min: 1 },   // Tisch: „Wer sollte als Nächstes spielen?“
   suggestions_recent_days:       { type: 'integer', value: 28,   min: 1 },   // … pairs that rarely met in these days get a bonus
   // Abzeichen (Phase 12). Lists: comma-separated; a longer list = more levels, no code change needed.

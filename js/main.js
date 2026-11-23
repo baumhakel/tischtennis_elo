@@ -1,5 +1,5 @@
 // Boot: wires the modules together. The only file that knows about all of them.
-import { CLIENT_ID, SPREADSHEET_ID, SHEET_TIMEZONE } from './config.js';
+import { CLIENT_ID, SPREADSHEET_ID, SHEET_TIMEZONE, APP_VERSION } from './config.js';
 import { nowSerial, clean } from './core/normalize.js';
 import { resolveFilters, visible, resolveFocus } from './core/filters.js';
 import { createAuth } from './io/auth.js';
@@ -11,6 +11,7 @@ import { parseHash, formatHash } from './app/url.js';
 import { createPipeline } from './app/pipeline.js';
 import { createAfterEntry } from './app/after-entry.js';
 import { createInstall } from './app/install.js';
+import { createUsage } from './app/usage.js';
 import { createRouter } from './app/router.js';
 import { createShell } from './ui/shell.js';
 import { modelFor } from './app/modes.js';
@@ -40,7 +41,11 @@ const cache = demo
 const store = createStore({ ...initialState(), ...parseHash(location.hash), auth: auth.state(), me: loadMe() });
 const pipeline = createPipeline({ store, auth, fetchRaw, cache, now });
 // after entering a result: refresh on return and say whether the game arrived (app/after-entry.js)
-const install = createInstall({ store });   // early: the browser may offer installing right away
+const install = createInstall({ store });
+// usage counting (app/usage.js): only once the Nutzung form is set in config, and not when switched off here
+let storage;
+try { storage = window.localStorage; storage.getItem('x'); } catch { const m = new Map(); storage = { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)), removeItem: k => m.delete(k) }; }
+const usage = createUsage({ storage, version: APP_VERSION, onChange: u => store.set({ usage: u }) });   // early: the browser may offer installing right away
 const afterEntry = createAfterEntry({ store, refresh: () => pipeline.refresh(), hasToken: () => !!auth.getToken() });
 
 const actions = {
@@ -62,7 +67,8 @@ const actions = {
     }
   },
   refresh: () => (auth.getToken() ? pipeline.refresh() : actions.signIn()),
-  install: () => install.prompt(),
+  install: () => { usage.count('aktion:installieren'); install.prompt(); },
+  setUsageOff: off => usage.setOff(off),
   noticeRetry: () => afterEntry.retry(),
   noticeDismiss: () => afterEntry.dismiss(),
   signOut() { auth.signOut(); store.set({ data: { needsSignIn: true } }); },
@@ -159,9 +165,24 @@ auth.onChange(a => store.set({ auth: a }));
 
 // reload when the app comes back to the foreground and the data is older than auto_refresh_seconds
 // (links to the Ergebnis form carry data-form="ergebnis"; after one was tapped, the return refreshes at once)
-document.addEventListener('click', e => { if (e.target.closest?.('a[data-form="ergebnis"]')) afterEntry.opened(); }, true);
+document.addEventListener('click', e => {
+  const form = e.target.closest?.('a[data-form]')?.dataset.form;
+  if (!form) return;
+  usage.count('aktion:formular-' + form);
+  if (form === 'ergebnis') afterEntry.opened();
+}, true);
+// usage: every view opened, plus the actions other modules announce with a „tt-usage“ event (share, Tisch preview)
+document.addEventListener('tt-usage', e => usage.count('aktion:' + e.detail));
+usage.count(store.get().view);
+let usageCfg = null;
+store.subscribe((s, prev) => {
+  if (s.view !== prev.view) usage.count(s.view);
+  const cfg = s.data.model?.dataset.config;
+  if (cfg && cfg !== usageCfg) { usageCfg = cfg; usage.configure(cfg); }
+});
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return;
+  usage.flush();
   if (afterEntry.onVisible()) return;
   if (!auth.getToken()) return;
   const cfg = store.get().data.model?.dataset.config;

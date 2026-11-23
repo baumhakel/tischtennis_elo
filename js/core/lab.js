@@ -191,7 +191,7 @@ export function timedGroups(model, { gapMinutes, minSamples }) {
   };
   for (let g = 0; g < G.length; g++) {
     const x = G[g];
-    if (x.source !== 'spiele') continue;
+    if (x.source !== 'spiele' || x.moved) continue;   // moved: the time was entered by hand
     const s = elo.slots, a1 = s[4 * g], a2 = s[4 * g + 1], b1 = s[4 * g + 2], b2 = s[4 * g + 3];
     const e = elo.perGame.eW[g], res = 1 - e, v = e * (1 - e);   // the winners' side; losers get −res
     const hour = (x.t - Math.floor(x.t)) * 24, wd = (Math.floor(x.t) + 5) % 7;

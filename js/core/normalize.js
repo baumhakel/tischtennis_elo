@@ -92,6 +92,12 @@ export function parseTime(v) {
   return serial;
 }
 
+/** Does a time cell carry a time of day? Text needs „hh:mm“, a date-time cell a non-zero time (midnight counts as none). */
+export function hasTimeOfDay(v) {
+  if (typeof v === 'number') return Number.isFinite(v) && Math.round(v * 86400) % 86400 !== 0;
+  return /\d{1,2}:\d{2}/.test(clean(v));
+}
+
 /** Current wall-clock time in `timeZone` as a serial (for "last 7 days" etc.). */
 export function nowSerial(timeZone, now = new Date()) {
   const f = new Intl.DateTimeFormat('en-CA', {

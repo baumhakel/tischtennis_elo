@@ -83,7 +83,14 @@ function page(ctx) {
         ? `Altdaten${x.sourceRow != null ? `, Zeile ${x.sourceRow} der Excel-Liste` : ''}; die Uhrzeit ist geschätzt`
         : `Formulareintrag, Zeile ${x.row}`),
       x.corrected ? [h('dt', {}, 'Korrektur'), h('dd', {}, 'Ergebnis nachträglich getauscht')] : null,
+      x.moved ? [h('dt', {}, 'Nachgetragen'), h('dd', {}, enteredText(x))] : null,
       h('dt', {}, 'Zeitstempel'), h('dd', {}, h('code', {}, x.ref)),
       dup > 1 ? [h('dt', {}, 'Hinweis'), h('dd', {}, `${dup} Spiele haben diesen Zeitstempel, hier steht das erste.`)] : null),
   ];
+}
+
+/** „Gespielt 17.11.2026, 12:10 Uhr · eingetragen 13:31 Uhr“ (the date of the entry only when it differs). */
+function enteredText(x) {
+  const sameDay = Math.floor(x.t) === Math.floor(x.enteredT);
+  return `Gespielt ${fmt.date(x.t)}, ${fmt.time(x.t)} Uhr · eingetragen ${sameDay ? '' : `${fmt.date(x.enteredT)}, `}${fmt.time(x.enteredT)} Uhr`;
 }

@@ -4,14 +4,14 @@
 //   1. config → typed values with defaults
 //   2. players + aliases → ID lookup by normalised name
 //   3. legacy + Spiele rows → one schema; Spiele rows before responses_valid_from dropped
-//   4. corrections (void / swap) matched by game_ref
+//   4. corrections (void / swap / move) matched by game_ref; move sets the time to played_at, the ref stays
 //   5. names → IDs, shape check (1v1 or 2v2), no player twice in one game
 //   6. sort by time, legacy first on ties, then sheet row; assign g; hash
 // Bad data never throws: it becomes an Issue and the affected row is skipped.
 
 import { COLUMNS, OPTIONAL_COLUMNS, CONFIG_DEFAULTS, TABS } from '../config.js';
 import {
-  clean, norm, toBool, toNumber, parseTime, roundSerial, formatRef, serialToParts, readTable, cell, fnv1a,
+  clean, norm, toBool, toNumber, parseTime, hasTimeOfDay, roundSerial, formatRef, serialToParts, readTable, cell, fnv1a,
 } from './normalize.js';
 
 /** @typedef {import('../types.js').RawSheets} RawSheets */
@@ -29,7 +29,7 @@ export function load(raw) {
   /** @type {Issue[]} */
   const issues = [];
   const report = (level, kind, message, extra = {}) => issues.push({ level, kind, message, ...extra });
-  const counts = { legacyRows: 0, spieleRows: 0, beforeCutoff: 0, voided: 0, swapped: 0, skipped: 0, games: 0 };
+  const counts = { legacyRows: 0, spieleRows: 0, beforeCutoff: 0, voided: 0, swapped: 0, moved: 0, skipped: 0, games: 0 };
 
   const config = parseConfig(raw.config, report);
   const { players, idByName } = parsePlayers(raw.players, raw.aliases, report);
@@ -334,15 +334,16 @@ function applyCorrections(grid, rows, report, counts) {
     if (!byRef.has(r.ref)) byRef.set(r.ref, []);
     byRef.get(r.ref).push(r);
   }
+  const moves = new Map();   // ref → { row, value, hits }: the last move row per game counts
   for (const { cells, row } of t.rows) {
     const rawRef = cell(cells, t.col.game_ref);
     const time = parseTime(rawRef);
     const action = norm(cell(cells, t.col.action));
-    if (time == null || !['void', 'swap'].includes(action)) {
+    if (time == null || !['void', 'swap', 'move'].includes(action)) {
       report('warning', 'bad_correction',
         `Tab ${tab}, Zeile ${row}: ` + (time == null
           ? `game_ref „${clean(rawRef)}“ nicht lesbar (Format yyyy-mm-dd hh:mm:ss).`
-          : `Aktion „${clean(cell(cells, t.col.action))}“ unbekannt (erlaubt: void, swap).`),
+          : `Aktion „${clean(cell(cells, t.col.action))}“ unbekannt (erlaubt: void, swap, move).`),
         { tab, row });
       continue;
     }
@@ -359,11 +360,43 @@ function applyCorrections(grid, rows, report, counts) {
         `Tab „${tab}“, Zeile ${row}: ${hits.length} Spiele haben den Zeitstempel ${ref}. Die Korrektur gilt für alle.`,
         { tab, row, ref, count: hits.length });
     }
+    if (action === 'move') {
+      const prev = moves.get(ref);
+      if (prev) {
+        report('warning', 'duplicate_move',
+          `Tab „${tab}“, Zeile ${row}: Für das Spiel ${ref} gibt es schon eine move-Zeile (Zeile ${prev.row}). Es gilt die spätere Zeile ${row}.`,
+          { tab, row, ref });
+      }
+      moves.set(ref, { row, value: cell(cells, t.col.played_at), hits });
+      continue;
+    }
     for (const r of hits) {
       if (r.voided) continue;
       if (action === 'void') { r.voided = true; counts.voided++; }
       else { [r.w, r.l] = [r.l, r.w]; r.corrected = !r.corrected; counts.swapped++; }
     }
+  }
+
+  // move: after all rows, so a void anywhere in the tab wins and the last move row counts
+  for (const [ref, m] of moves) {
+    const live = m.hits.filter(r => !r.voided);
+    if (!live.length) continue;
+    const v = m.value, shown = typeof v === 'number' ? formatRef(roundSerial(v)) : clean(v);
+    const at = parseTime(v);
+    const ts = at == null ? null : roundSerial(at);
+    const problem = t.col.played_at < 0 ? 'Die Spalte „played_at“ fehlt'
+      : shown === '' ? '„played_at“ ist leer'
+      : ts == null ? `„played_at“ („${shown}“) ist nicht lesbar (Format dd.mm.yyyy hh:mm oder yyyy-mm-dd hh:mm)`
+      : !hasTimeOfDay(v) ? `„played_at“ („${shown}“) hat keine Uhrzeit`
+      : live.some(r => ts > r.t) ? `„played_at“ (${formatRef(ts)}) liegt nach dem Eintrag`
+      : null;
+    if (problem) {
+      report('warning', 'bad_move',
+        `Tab „${tab}“, Zeile ${m.row}: ${problem}. Das Spiel ${ref} bleibt beim Zeitpunkt des Eintrags.`,
+        { tab, row: m.row, ref });
+      continue;
+    }
+    for (const r of live) { r.entered = r.t; r.t = ts; r.moved = true; counts.moved++; }
   }
 }
 
@@ -405,6 +438,7 @@ function toGame(r, idByName, unknown, report) {
   };
   if (r.sourceRow != null) game.sourceRow = r.sourceRow;
   if (r.corrected) game.corrected = true;
+  if (r.moved) { game.moved = true; game.enteredT = r.entered; }
   return game;
 }
 

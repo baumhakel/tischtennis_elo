@@ -40,8 +40,9 @@
  * One valid game, after cutoff, corrections, ID mapping and validation.
  * @typedef {Object} Game
  * @property {number} g            global index in sorted order, 0-based
- * @property {number} t            sheet serial (days since 1899-12-30, sheet-local wall-clock)
- * @property {string} ref          "yyyy-mm-dd hh:mm:ss", matches corrections.game_ref
+ * @property {number} t            sheet serial (days since 1899-12-30, sheet-local wall-clock); played_at for a moved game
+ * @property {string} ref          "yyyy-mm-dd hh:mm:ss" of the row's own timestamp (submission), matches corrections.game_ref;
+ *                                 stays the same when the game is moved
  * @property {'legacy'|'spiele'} source
  * @property {number} row          sheet row number in its source tab (header = row 1)
  * @property {string[]} winners    player IDs, length 1 (singles) or 2 (doubles)
@@ -50,6 +51,8 @@
  * @property {boolean} approxTime  true for legacy (interpolated timestamps)
  * @property {number} [sourceRow]  legacy only: row in legacy_raw
  * @property {boolean} [corrected] result swapped by a `corrections` row
+ * @property {boolean} [moved]     time set by a `move` row in `corrections` (Nachgetragen); t = played_at
+ * @property {number} [enteredT]   moved games only: the row's own timestamp (when it was entered)
  */
 
 /**
@@ -57,7 +60,7 @@
  * @property {'error'|'warning'} level
  * @property {string} kind      missing_column | bad_config | missing_config | missing_cutoff | bad_timestamp |
  *                              unknown_name | invalid_game | duplicate_player | bad_correction |
- *                              unmatched_correction | ambiguous_correction | bad_alias |
+ *                              unmatched_correction | ambiguous_correction | bad_move | duplicate_move | bad_alias |
  *                              legacy_after_cutoff
  * @property {string} message   German, for the UI
  * @property {string} [tab]
@@ -74,6 +77,7 @@
  * @property {number} beforeCutoff  Spiele rows dropped as test data
  * @property {number} voided
  * @property {number} swapped
+ * @property {number} moved
  * @property {number} skipped       rows dropped because of an issue
  * @property {number} games         valid games in Dataset.games
  */

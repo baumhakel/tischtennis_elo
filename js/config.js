@@ -1,6 +1,6 @@
 // Static app constants. No side effects: safe to import from core/ (browser, worker, Node).
 
-export const APP_VERSION = '2.0.0-dev.12';   // bump to invalidate the browser cache
+export const APP_VERSION = '2.0.0-dev.13';   // bump to invalidate the browser cache
 
 // >>> FILL IN: OAuth client ID (ends in .apps.googleusercontent.com)
 export const CLIENT_ID = '975581090195-pgfv9ptq40fkp728151hqpru116pg732.apps.googleusercontent.com';
@@ -30,13 +30,13 @@ export const COLUMNS = {
                  l1: ['Verlierer 1'], l2: ['Verlierer 2'] },
   players:     { id: ['id'], display_name: ['display_name'], active: ['active'], google_accounts: ['google_accounts'] },
   aliases:     { name: ['name'], player_id: ['player_id'] },
-  corrections: { game_ref: ['game_ref'], action: ['action'], note: ['note'] },
+  corrections: { game_ref: ['game_ref'], action: ['action'], note: ['note'], played_at: ['played_at'] },
 };
 
 // Optional columns: missing ones are not an error.
 export const OPTIONAL_COLUMNS = {
   legacy: ['source_row'],
-  corrections: ['note'],
+  corrections: ['note', 'played_at'],
   players: ['google_accounts'],
 };
 

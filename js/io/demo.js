@@ -2,7 +2,7 @@
 // so the app can be tried without Google sign-in. Nothing here is real data.
 
 import { CONFIG_DEFAULTS } from '../config.js';
-import { nowSerial } from '../core/normalize.js';
+import { nowSerial, formatRef, roundSerial } from '../core/normalize.js';
 
 const ALL_NAMES = ['Anna', 'Bernd', 'Clara', 'David', 'Elif', 'Felix', 'Greta', 'Hannes', 'Ida', 'Jonas', 'Kira', 'Lukas', 'Mira', 'Noah', 'Olga'];
 
@@ -48,6 +48,12 @@ export function demoRaw(timeZone, size = 'klein') {
     else spiele.push([t, w[0], w[1] || '', l[0], l[1] || '']);
   });
   spiele.splice(1, 0, [cutoff - 2, 'Anna', '', 'Bernd', '']);   // a test row before the cutoff
+  // a game entered late (Nachgetragen): submitted after the last game, really played about an hour before
+  // the sixth-last one, fixed by a `move` row
+  const late = spiele.at(-6), lateT = spiele.at(-1)[0] + 10 / 1440, playedT = late[0] - 1 / 24;
+  spiele.push([lateT, late[3], late[4], late[1], late[2]]);
+  const ref = t => formatRef(roundSerial(t));
+  const corrections = [['game_ref', 'action', 'note', 'played_at'], [ref(lateT), 'move', 'Demo: nachgetragen', ref(playedT)]];
 
   const demoValue = { responses_valid_from: cutoff, form_result_url: DEMO_FORM, form_support_url: DEMO_FORM, form_management_url: DEMO_FORM };
   const config = [['key', 'value', 'note'], ...Object.entries(CONFIG_DEFAULTS)
@@ -56,7 +62,7 @@ export function demoRaw(timeZone, size = 'klein') {
   const players = [['id', 'display_name', 'active', 'google_accounts'],
     ...NAMES.map((n, k) => [`p${String(k + 1).padStart(3, '0')}`, n, true, k === 2 ? DEMO_EMAIL : ''])];
   const aliases = [['name', 'player_id'], ...NAMES.map((n, k) => [n, `p${String(k + 1).padStart(3, '0')}`])];
-  return { config, legacy, spiele, players, aliases, corrections: [['game_ref', 'action', 'note']] };
+  return { config, legacy, spiele, players, aliases, corrections };
 }
 
 /** Stand-in for io/auth.js: always signed in. */

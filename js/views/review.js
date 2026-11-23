@@ -9,6 +9,7 @@ import { reviewYears, reviewSeason, playerYear, leagueYear, yearWindow } from '.
 import { isoWeek } from './badge-defs.js';
 import { medalSpec } from './share-cards.js';
 import { formatRef } from '../core/normalize.js';
+import { timeRef } from './game-query.js';
 
 export default {
   id: 'rueckblick',
@@ -86,7 +87,7 @@ function playerCards(ctx, f) {
     spark: f.spark, sparkLabels: [f.newcomer ? `erstes Spiel ${fmt.date(games[f.firstG].t)}` : '1. Jänner', f.running ? 'heute' : '31. Dezember'], link: linkTo(ctx, 'player', { id }) });
   const lines = [];
   if (f.streak) lines.push({ label: 'Längste Siegesserie', value: `${f.streak.len} Siege`,
-    link: linkTo(ctx, 'spiele', { spieler: id, von: games[f.streak.fromG].ref, bis: games[f.streak.toG].ref }) });
+    link: linkTo(ctx, 'spiele', { spieler: id, von: timeRef(games[f.streak.fromG]), bis: timeRef(games[f.streak.toG]) }) });
   cards.push({ kicker, title: 'Bilanz', big: `${f.wins} : ${f.losses}`, bigLabel: 'Siege : Niederlagen',
     sub: `Siegquote ${fmt.pct(f.wins / f.games)}`, lines });
   if (f.bestWeek) cards.push({ kicker, title: 'Beste Woche', big: fmt.signed(f.bestWeek.gain), tone: 'up',

@@ -6,6 +6,7 @@ import { ratingSeries, recentStart } from '../ui/series.js';
 import { lineChart } from '../ui/charts/line.js';
 import { focusLegend, tile, nameOf, linkTo } from './common.js';
 import { recentGames } from './games.js';
+import { timeRef } from './game-query.js';
 import { SNOOZE_DAYS } from '../app/me.js';
 import { earnedCard, newestOf, collectionLink } from './badges.js';
 import { shareButton } from '../ui/share.js';
@@ -198,7 +199,7 @@ function curves(ctx) {
   const N = model.dataset.games.length;
   return {
     x, xType: axis === 'date' ? 'time' : 'num', series, height: 240, y: {},
-    note: N ? [h('a', { class: 'inline-link', ...linkTo(ctx, 'spiele', { von: model.dataset.games[start].ref }) },
+    note: N ? [h('a', { class: 'inline-link', ...linkTo(ctx, 'spiele', { von: timeRef(model.dataset.games[start]) }) },
       `${N - start} Spiele seit dem ${fmt.date(model.dataset.games[start].t)}`), '.',
       filters.xAxis === 'own' ? ' Die x-Achse zeigt hier die Spielnummer.' : ''] : '',
   };

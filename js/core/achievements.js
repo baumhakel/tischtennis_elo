@@ -180,7 +180,7 @@ export function computeAchievements(pooled, modes = {}, now = Infinity) {
     const x = games[g], t = x.t;
     const W = x.winners.map(id => elo.index.get(id)), L = x.losers.map(id => elo.index.get(id));
     const eW = elo.perGame.eW[g], delta = elo.perGame.delta[g];
-    const form = x.source !== 'legacy';
+    const form = x.source !== 'legacy' && !x.moved;   // a moved game's time was entered by hand, so it is approximate
     expireUntil(t);
     const before = ranking(S, t);
     const leaderBefore = before[0];

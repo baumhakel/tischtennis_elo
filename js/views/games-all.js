@@ -90,7 +90,7 @@ function chips(ctx, f) {
   else if (f.von) add(`ab ${day(f.von)}`, { von: null });
   else if (f.bis) add(`bis ${day(f.bis)}`, { bis: null });
   if (f.quelle) add(f.quelle === 'altdaten' ? 'nur Altdaten' : 'nur Formulareinträge', { quelle: null });
-  if (f.korrigiert) add('nur korrigierte Ergebnisse', { korrigiert: null });
+  if (f.korrigiert) add('nur korrigierte Spiele', { korrigiert: null });
   if (f.chance) add(`Siegchance ${fmt.pct(f.chance[0])} bis ${fmt.pct(f.chance[1])}`, { chance: null });
   if (f.letzte) add(`die letzten ${f.letzte}`, { letzte: null });
   return list.length ? h('div', { class: 'legend' }, list) : null;

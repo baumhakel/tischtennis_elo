@@ -1,7 +1,7 @@
 // Pure helpers for the Phase 8 pages: Aufsteiger, Serien, Team, Siegchance, and game ranges
 // for links into Alle Spiele (no DOM).
 import { formatRef } from '../core/normalize.js';
-import { sideInRange } from './game-query.js';
+import { sideInRange, timeRef } from './game-query.js';
 
 const wonBy = (elo, k, g) => { const s = elo.slots; return s[4 * g] === k || s[4 * g + 1] === k; };
 
@@ -14,7 +14,7 @@ export function ownRange(model, k, endG, len) {
   const j = g.indexOf(endG);
   if (j < 0 || len < 1) return null;
   const games = model.dataset.games;
-  return { spieler: model.elo.ids[k], von: games[g[Math.max(0, j - len + 1)]].ref, bis: games[endG].ref };
+  return { spieler: model.elo.ids[k], von: timeRef(games[g[Math.max(0, j - len + 1)]]), bis: timeRef(games[endG]) };
 }
 
 /**

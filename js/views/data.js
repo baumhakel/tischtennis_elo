@@ -30,9 +30,9 @@ function page(ctx) {
         fact('Gewertete Spiele', h('a', { class: 'inline-link', ...linkTo(ctx, 'spiele') }, fmt.int(counts.games))),
         fact('Altdaten (Excel)', h('a', { class: 'inline-link', ...linkTo(ctx, 'spiele', { quelle: 'altdaten' }) }, `${fmt.int(counts.legacyRows)} Spiele`)),
         fact('Formulareinträge', `${fmt.int(counts.spieleRows)}` + (counts.beforeCutoff ? `, davon ${fmt.int(counts.beforeCutoff)} ${counts.beforeCutoff === 1 ? 'Testeintrag' : 'Testeinträge'} vor dem ${config.responses_valid_from != null ? fmt.date(config.responses_valid_from) : '–'}` : '')),
-        fact('Korrekturen', `${counts.voided} gestrichen, `, counts.swapped
-          ? h('a', { class: 'inline-link', ...linkTo(ctx, 'spiele', { korrigiert: '1' }) }, `${counts.swapped} mit vertauschtem Ergebnis`)
-          : '0 mit vertauschtem Ergebnis'),
+        fact('Korrekturen', `${counts.voided} gestrichen, `,
+          countLink(ctx, counts.swapped, 'mit vertauschtem Ergebnis'), ', ',
+          countLink(ctx, counts.moved ?? 0, 'nachgetragen')),
         fact('Nicht gewertet', counts.skipped ? `${counts.skipped} ${counts.skipped === 1 ? 'Zeile' : 'Zeilen'} (siehe Hinweise)` : 'keine'),
         fact('Spieler', `${fmt.int(ctx.model.elo.ids.length)} mit mindestens einem Spiel`))),
 
@@ -68,4 +68,9 @@ function show(key, v) {
   if (key === 'responses_valid_from') return `${fmt.date(v)} ${fmt.time(v)}`;
   if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
   return String(v);
+}
+
+/** „3 nachgetragen“ as a link to the corrected games, plain text when 0. */
+function countLink(ctx, n, label) {
+  return n ? h('a', { class: 'inline-link', ...linkTo(ctx, 'spiele', { korrigiert: '1' }) }, `${n} ${label}`) : `0 ${label}`;
 }

@@ -60,9 +60,10 @@ test('summary: effects, intervals and p-values from the null', () => {
   assert.equal(early.hot.effect, undefined);
 });
 
-test('form-entry analyses: only Spiele rows, groups add up', () => {
+test('form-entry analyses: only Spiele rows at their own time (no moved games), groups add up', () => {
   const T = timedGroups(model, { gapMinutes: d.config.session_gap_minutes, minSamples: 5 });
-  const formGames = d.games.filter(x => x.source === 'spiele');
+  const formGames = d.games.filter(x => x.source === 'spiele' && !x.moved);
+  assert.ok(d.games.some(x => x.moved), 'the demo has a moved game');
   const slots = formGames.reduce((s, x) => s + x.winners.length + x.losers.length, 0);
   const pos = T.find(a => a.key === 'position');
   assert.equal(pos.groups.reduce((s, g) => s + g.n, 0), slots);

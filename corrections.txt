@@ -1,0 +1,100 @@
+HOW CORRECTIONS WORK
+====================
+
+Game rows in the tabs "Spiele" and "legacy" are never edited by hand.
+Every fix is a row in the tab "corrections". The app reads that tab on
+every load and applies the rows. Delete a row to undo it.
+
+
+1. THE TAB
+----------
+
+Columns (the order doesn't matter, the app finds them by header):
+
+  game_ref | action | note | played_at
+
+  game_ref   Which game. The game's Zeitstempel, best copied from the
+             app's game page (at the bottom). Copying it from the sheet
+             also works: "dd.mm.yyyy hh:mm:ss" from Spiele or
+             "yyyy-mm-dd hh:mm:ss" from legacy, as text or as a date cell.
+  action     void, swap or move (see below).
+  note       Free text for yourself, e.g. who reported it. Optional.
+  played_at  Only for move: when the game was really played.
+             Leave it empty for void and swap.
+
+The header "played_at" has to be added once by hand, as the last column.
+
+
+2. THE THREE ACTIONS
+--------------------
+
+  void   The game is removed. Use it for test entries, duplicates and
+         games that never happened.
+
+  swap   Winners and losers are exchanged. Use it when the right people
+         were entered but the wrong side won.
+
+  move   The game counts at the time it was really played, given in
+         played_at. Use it for games entered late.
+         played_at: a date-time cell, or text "dd.mm.yyyy hh:mm" or
+         "yyyy-mm-dd hh:mm" (seconds optional). A rough time is fine,
+         but it needs a time of day and must not be later than the entry.
+
+A moved game keeps its Zeitstempel (the entry time). So links to it and
+other correction rows still find it under that Zeitstempel. Everything
+else (order, Elo, Plätze, streaks, badges, week and month) uses
+played_at. The game page shows "Nachgetragen" with both times.
+
+
+3. COMMON CASES
+---------------
+
+Forgotten game
+  1. Enter it in the Ergebnis form as usual.
+  2. Open it in the app (Letzte Spiele) and copy its Zeitstempel.
+  3. Add a row:  <Zeitstempel> | move | forgotten | <when it was played>
+
+Wrong winner (right players, wrong side won)
+  One row:  <Zeitstempel> | swap | <note>
+
+Wrong player (e.g. the wrong opponent)
+  1. Void the wrong game:  <wrong Zeitstempel> | void | wrong opponent
+  2. Enter the right game in the Ergebnis form.
+  3. Move the new entry to the wrong game's time:
+       <new Zeitstempel> | move | replaces wrong entry | <wrong Zeitstempel>
+  The result is exactly as if the game had been entered correctly.
+
+Game entered twice
+  Void one of the two:  <Zeitstempel> | void | duplicate
+
+Interpolated time of an old (legacy) game is off
+  <Zeitstempel> | move | <note> | <real time>
+
+
+4. RULES
+--------
+
+- One game may have several rows, e.g. swap and move.
+- void wins over everything else.
+- Two move rows for the same game: the later row counts, and the app
+  shows a hint.
+- A played_at before responses_valid_from is allowed (a paper game
+  entered late). The legacy migration never has to be re-run for that.
+- Entries in Spiele before responses_valid_from are test data and stay
+  ignored, even with a correction row. The cutoff uses the entry time.
+- Moved games don't count for the time-of-day badges or the Labor's
+  session and hour analyses, because a typed-in time is only rough.
+
+
+5. CHECKING
+-----------
+
+After adding rows, open the app and refresh. The menu item "Daten und
+Hinweise" counts the corrections ("gestrichen", "mit vertauschtem
+Ergebnis", "nachgetragen")
+and lists every row it could not apply, with the row number. Typical
+reasons: the Zeitstempel matches no game, the action is misspelled, or
+played_at is empty, unreadable, has no time of day or lies after the
+entry. A move row with a problem leaves the game at its entry time.
+
+Alle Spiele -> filter "korrigiert" lists every swapped or moved game.

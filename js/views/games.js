@@ -33,7 +33,7 @@ export function gameRow(ctx, g, { as = null } = {}) {
     delta = h('span', { class: 'd up' }, fmt.signed(f.delta, 1));
     meta = `${time} · ${kind} · Siegchance ${fmt.pct(f.eW)}`;
   }
-  return h('li', {},
+  return h('li', ctx.fresh?.has(x.ref) ? { class: 'fresh' } : {},
     h('a', { class: 'game tap' + (mark ? '' : ' neutral'), ...gameLink(ctx, g) },
       mark,
       h('span', { class: 'who' }, who),

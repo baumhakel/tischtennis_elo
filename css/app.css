@@ -710,3 +710,22 @@ a.running { color: inherit; text-decoration: none; position: relative; padding-r
 .cycles li { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 8px 0; border-top: 1px solid var(--line); }
 .chip-link { position: relative; padding-right: 16px; font-size: 14px; color: inherit; text-decoration: none; }
 h3 { font-size: 15px; margin: var(--s4) 0 var(--s2); }
+
+/* Phase 17: notice after entering a result (app/after-entry.js) and the game that just arrived */
+.notice {
+  position: fixed; left: 12px; right: 12px; z-index: 11; max-width: 520px; margin: 0 auto;
+  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 10px);
+  display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 4px 6px 4px 16px;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-left: 4px solid var(--table);
+  border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12); font-size: 15px;
+}
+.notice > span, .notice > a { flex: 1; }
+.notice a.tap { color: inherit; text-decoration: none; min-height: 44px; display: flex; align-items: center; }
+.notice button.link { min-height: 44px; padding: 0 8px; font-weight: 600; }
+.notice .x { min-width: 44px; min-height: 44px; border: 0; background: none; color: var(--muted); font-size: 22px; }
+@media (prefers-color-scheme: dark) { .notice { border-left-color: var(--up); } }
+.games li.fresh > .game { background: color-mix(in srgb, var(--up) 14%, transparent); }
+@media (prefers-reduced-motion: no-preference) {
+  .games li.fresh > .game { animation: fresh-fade 8s ease-out forwards; }
+  @keyframes fresh-fade { 0%, 60% { background: color-mix(in srgb, var(--up) 18%, transparent); } 100% { background: transparent; } }
+}

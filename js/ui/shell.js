@@ -14,6 +14,7 @@ import { resolveMe } from '../app/me.js';
 import { APP_VERSION } from '../config.js';
 import { windowRange } from '../core/window.js';
 import { viewById } from '../views/index.js';
+import { formatHash } from '../app/url.js';
 
 const X_LABELS = { date: 'Datum', game: 'Spielnummer', own: 'Eigene Spiele' };
 const TABS = [
@@ -45,6 +46,9 @@ export function createShell(root, { store, actions }) {
   // ── banner (exceptions only) ──
   const banner = h('div', { class: 'banner', role: 'status', 'aria-live': 'polite', hidden: true });
 
+  // ── notice after entering a result (app/after-entry.js), just above the bottom bar ──
+  const notice = h('div', { class: 'notice', role: 'status', 'aria-live': 'polite', hidden: true });
+
   // ── lens bar ──
   const modeSeg = h('div', { class: 'seg mode-seg', role: 'radiogroup', 'aria-label': 'Wertung' },
     MODES.map(m => h('label', {},
@@ -72,7 +76,7 @@ export function createShell(root, { store, actions }) {
     menuBody);
   const backdrop = h('div', { class: 'backdrop', hidden: true, onclick: () => closeMenu() });
 
-  render(root, appBar, h('div', { class: 'frame' }, banner, lens, viewEl), nav, backdrop, drawer);
+  render(root, appBar, h('div', { class: 'frame' }, banner, lens, viewEl), notice, nav, backdrop, drawer);
 
   // filter controls are built once; values follow the state
   const min = h('input', { type: 'range', min: '0', step: '1', id: 'f-min' });
@@ -164,6 +168,7 @@ export function createShell(root, { store, actions }) {
       h('button', { class: 'link', type: 'button', onclick: actions.signIn }, 'Anmelden und aktualisieren')];
     banner.hidden = !msg;
     if (msg) render(banner, msg);
+    renderNotice(s);
 
     // lens bar
     lens.hidden = !model;
@@ -247,13 +252,13 @@ export function createShell(root, { store, actions }) {
 
     // Mitmachen: form links come from the config tab (never from the public code)
     const forms = cfg ? [
-      [cfg.form_result_url, 'Ergebnis eintragen'],
+      [cfg.form_result_url, 'Ergebnis eintragen', 'ergebnis'],
       [cfg.form_support_url, 'Problem melden oder Idee einreichen'],
       [cfg.form_management_url, 'Spieler verwalten'],
     ].filter(([u]) => u) : [];
     const mitmachen = forms.length ? h('section', { class: 'menu-section', id: 'menu-mitmachen' }, h('h3', {}, 'Mitmachen'),
-      h('ul', { class: 'menu-links' }, forms.map(([u, label]) =>
-        h('li', {}, h('a', { class: 'tap', href: u, target: '_blank', rel: 'noopener' }, label))))) : null;
+      h('ul', { class: 'menu-links' }, forms.map(([u, label, form]) =>
+        h('li', {}, h('a', { class: 'tap', href: u, target: '_blank', rel: 'noopener', 'data-form': form || null }, label))))) : null;
 
     // Daten
     const stamp = data.updatedAt ? fmt.stamp(data.updatedAt) : null;
@@ -281,6 +286,25 @@ export function createShell(root, { store, actions }) {
 
     filterSection.hidden = !model;
     render(ichBox, ich); render(mitBox, mitmachen); render(datenBox, daten); render(ueberBox, ueber);
+  }
+
+  function renderNotice(s) {
+    const n = s.notice, model = s.data.model;
+    notice.hidden = !n || !model;
+    if (notice.hidden) return;
+    const close = h('button', { type: 'button', class: 'x', 'aria-label': 'Hinweis schließen', onclick: actions.noticeDismiss }, '×');
+    const link = (filters, view, params, text) => h('a', { class: 'tap', href: formatHash({ view, params, filters }) }, text);
+    if (n.kind === 'checking') return render(notice, h('span', {}, 'Wird aktualisiert …'));
+    if (n.kind === 'missing') {
+      return render(notice, h('span', {}, 'Noch nicht angekommen.'),
+        h('button', { type: 'button', class: 'link', onclick: actions.noticeRetry }, 'Aktualisieren'), close);
+    }
+    const games = model.dataset.games.filter(g => n.refs.includes(g.ref));
+    const nameOf = id => model.dataset.players.get(id)?.name ?? id;
+    const team = ids => ids.map(nameOf).join(' & ');
+    render(notice, games.length === 1
+      ? link(s.filters, 'spiel', { ref: games[0].ref }, `Angekommen: ${team(games[0].winners)} ${games[0].double ? 'schlagen' : 'schlägt'} ${team(games[0].losers)}`)
+      : link(s.filters, 'spiele', {}, `${games.length} neue Spiele angekommen`), close);
   }
 
   function renderEmpty(el, s) {

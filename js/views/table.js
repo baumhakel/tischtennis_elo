@@ -137,7 +137,7 @@ function preview(ctx, A, B, name, set) {
           h('span', { class: 'second' }, `${WORD[secondary]}: ${fmt.signed(q.delta, 1)} · ${rank(q.rankBefore, q.rankAfter)}`));
       })),
       h('div', { class: 'menu-actions' },
-        url ? h('a', { class: 'button-link', href: url, target: '_blank', rel: 'noopener' }, 'Ergebnis eintragen') : null,
+        url ? h('a', { class: 'button-link', href: url, target: '_blank', rel: 'noopener', 'data-form': 'ergebnis' }, 'Ergebnis eintragen') : null,
         h('button', { type: 'button', class: 'secondary small', onclick: () => set(() => { session.hypo.push({ winners: W, losers: L }); }) }, 'Was wäre, wenn …')));
   };
 

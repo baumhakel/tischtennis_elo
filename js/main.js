@@ -9,6 +9,7 @@ import { demoRaw, demoAuth } from './io/demo.js';
 import { createStore, initialState } from './app/store.js';
 import { parseHash, formatHash } from './app/url.js';
 import { createPipeline } from './app/pipeline.js';
+import { createAfterEntry } from './app/after-entry.js';
 import { createRouter } from './app/router.js';
 import { createShell } from './ui/shell.js';
 import { modelFor } from './app/modes.js';
@@ -37,6 +38,8 @@ const cache = demo
 // ── state, with the URL as the source of view, params and filters ──
 const store = createStore({ ...initialState(), ...parseHash(location.hash), auth: auth.state(), me: loadMe() });
 const pipeline = createPipeline({ store, auth, fetchRaw, cache, now });
+// after entering a result: refresh on return and say whether the game arrived (app/after-entry.js)
+const afterEntry = createAfterEntry({ store, refresh: () => pipeline.refresh(), hasToken: () => !!auth.getToken() });
 
 const actions = {
   /** filters (optional): patch of the global filters, e.g. { focus: [...] } to highlight players. */
@@ -57,6 +60,8 @@ const actions = {
     }
   },
   refresh: () => (auth.getToken() ? pipeline.refresh() : actions.signIn()),
+  noticeRetry: () => afterEntry.retry(),
+  noticeDismiss: () => afterEntry.dismiss(),
   signOut() { auth.signOut(); store.set({ data: { needsSignIn: true } }); },
   async clearCache() {
     await clearCache();
@@ -92,7 +97,7 @@ const router = createRouter({
       badgeSeen: me.id && me.id in bootSeen ? bootSeen[me.id] : Infinity,   // „neu“ = earned after this
       state, model, baseModel: base, fullModel: full, mode: filters.mode, filters, params: state.params, now: t, names,
       window: range ? { ...range, empty: model.dataset.games.length === 0 } : null,
-      visible: vis, me,
+      visible: vis, me, fresh: new Set(state.fresh || []),
       focus: resolveFocus(filters, model.elo, vis, model.dataset.config, me.id),
       navigate: actions.navigate, setParams: actions.setParams, setFilters: actions.setFilters, actions,
     };
@@ -150,8 +155,12 @@ store.subscribe((s, prev) => {
 auth.onChange(a => store.set({ auth: a }));
 
 // reload when the app comes back to the foreground and the data is older than auto_refresh_seconds
+// (links to the Ergebnis form carry data-form="ergebnis"; after one was tapped, the return refreshes at once)
+document.addEventListener('click', e => { if (e.target.closest?.('a[data-form="ergebnis"]')) afterEntry.opened(); }, true);
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState !== 'visible' || !auth.getToken()) return;
+  if (document.visibilityState !== 'visible') return;
+  if (afterEntry.onVisible()) return;
+  if (!auth.getToken()) return;
   const cfg = store.get().data.model?.dataset.config;
   pipeline.refreshIfStale(cfg ? cfg.auto_refresh_seconds : 0);
 });

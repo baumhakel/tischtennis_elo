@@ -10,6 +10,7 @@ import { createStore, initialState } from './app/store.js';
 import { parseHash, formatHash } from './app/url.js';
 import { createPipeline } from './app/pipeline.js';
 import { createAfterEntry } from './app/after-entry.js';
+import { createInstall } from './app/install.js';
 import { createRouter } from './app/router.js';
 import { createShell } from './ui/shell.js';
 import { modelFor } from './app/modes.js';
@@ -39,6 +40,7 @@ const cache = demo
 const store = createStore({ ...initialState(), ...parseHash(location.hash), auth: auth.state(), me: loadMe() });
 const pipeline = createPipeline({ store, auth, fetchRaw, cache, now });
 // after entering a result: refresh on return and say whether the game arrived (app/after-entry.js)
+const install = createInstall({ store });   // early: the browser may offer installing right away
 const afterEntry = createAfterEntry({ store, refresh: () => pipeline.refresh(), hasToken: () => !!auth.getToken() });
 
 const actions = {
@@ -60,6 +62,7 @@ const actions = {
     }
   },
   refresh: () => (auth.getToken() ? pipeline.refresh() : actions.signIn()),
+  install: () => install.prompt(),
   noticeRetry: () => afterEntry.retry(),
   noticeDismiss: () => afterEntry.dismiss(),
   signOut() { auth.signOut(); store.set({ data: { needsSignIn: true } }); },

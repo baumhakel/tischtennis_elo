@@ -277,7 +277,17 @@ export function createShell(root, { store, actions }) {
         'Daten und Hinweise', issues.length ? h('span', { class: 'count' + (nErr ? ' has-errors' : '') }, nErr ? `${nErr} Fehler` : String(issues.length)) : null))) : null);
 
     // Über
+    // Als App installieren (app/install.js): the browser's dialog, or the two steps on iOS
+    const install = s.install === 'prompt'
+      ? h('div', { class: 'menu-actions' }, h('button', { type: 'button', class: 'small', onclick: () => { closeMenu(); actions.install(); } }, 'Als App installieren'))
+      : s.install === 'ios'
+        ? h('details', { class: 'install-steps' }, h('summary', {}, 'Als App installieren'),
+          h('ol', {}, h('li', {}, 'Unten in Safari auf „Teilen“ tippen (das Quadrat mit dem Pfeil nach oben).'),
+            h('li', {}, '„Zum Home-Bildschirm“ wählen und „Hinzufügen“.')),
+          h('p', { class: 'muted small' }, 'Die App auf dem Home-Bildschirm hat ihren eigenen Speicher: Dort einmal anmelden. Wer nicht über sein Google-Konto erkannt wird, wählt „Ich“ noch einmal.'))
+        : null;
     const ueber = h('section', { class: 'menu-section', id: 'menu-ueber' }, h('h3', {}, 'Über'),
+      install,
       h('details', {}, h('summary', {}, 'So funktioniert die Wertung'),
         h('p', {}, 'Jeder hat einen Elo-Wert (Start 1400). Nach jedem Spiel bekommt der Sieger Punkte, der Verlierer verliert gleich viele: umso mehr, je unwahrscheinlicher der Sieg laut den Werten vorher war. Im Doppel zählt der Mittelwert der beiden Partner.'),
         h('p', {}, '„Alle“ wertet Einzel und Doppel zusammen, „Einzel“ und „Doppel“ sind eigene Wertungen mit eigenen Elo-Werten.'),

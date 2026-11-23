@@ -3,7 +3,7 @@
 //
 //   spec = { kicker, title, big, bigLabel, sub, spark: [numbers], sparkLabels: [left, right],
 //            lines: [{ label, value, link, tone: 'up'|'down' }], medals: [{ motif, level, title }],
-//            link, note, foot }
+//            link, note, foot }   foot replaces the date in the image's footer („Stand …“ by default)
 //   cardHtml(spec)              → element
 //   cardCanvas(spec) → Promise<HTMLCanvasElement>
 import { h } from './dom.js';
@@ -89,7 +89,7 @@ export async function cardCanvas(s, { stamp = '' } = {}) {
   c.fillStyle = C.table; c.fillRect(0, 0, CARD_W, 300);
   c.fillStyle = '#FFFFFF'; c.fillRect(0, 300, CARD_W, 8);
   c.fillStyle = 'rgba(255,255,255,0.78)'; c.font = `500 40px ${TEXT}`; c.textBaseline = 'alphabetic';
-  if (s.kicker) c.fillText(s.kicker, X, 120);
+  if (s.kicker) { fit(c, s.kicker, TEXT, 40, Wd, '500'); c.fillText(s.kicker, X, 120); }
   c.fillStyle = '#FFFFFF'; fit(c, s.title, TEXT, 84, Wd, '700'); c.fillText(s.title, X, 222);
 
   let y = 400;
@@ -129,9 +129,10 @@ export async function cardCanvas(s, { stamp = '' } = {}) {
   }
   if (s.lines?.length) {
     y += 30;
-    const room = CARD_H - 150 - y, step = Math.max(64, Math.min(96, room / s.lines.length));
+    const bottom = CARD_H - (s.note ? 200 : 140);   // room for the note above the footer
+    const room = bottom - 10 - y, step = Math.max(64, Math.min(96, room / s.lines.length));
     for (const l of s.lines) {
-      if (y + step > CARD_H - 140) break;
+      if (y + step > bottom) break;
       c.strokeStyle = C.line; c.lineWidth = 2; c.beginPath(); c.moveTo(X, y); c.lineTo(R, y); c.stroke();
       const base = y + step / 2 + 14;
       c.fillStyle = l.tone === 'up' ? C.up : l.tone === 'down' ? C.down : C.ink;
@@ -148,6 +149,6 @@ export async function cardCanvas(s, { stamp = '' } = {}) {
   c.beginPath(); c.arc(X + 16, CARD_H - 56, 16, 0, 2 * Math.PI); c.fill(); c.stroke();
   c.fillStyle = C.muted; c.font = `500 34px ${TEXT}`;
   c.fillText(['Tischtennis Elo', s.foot || stamp].filter(Boolean).join(' · '), X + 50, CARD_H - 44);
-  if (s.note) { c.textAlign = 'right'; c.font = `400 28px ${TEXT}`; c.fillText(s.note, R, CARD_H - 44); c.textAlign = 'left'; }
+  if (s.note) { c.fillStyle = C.muted; fit(c, s.note, TEXT, 32, Wd, '400'); c.fillText(s.note, X, CARD_H - 150); }
   return cv;
 }

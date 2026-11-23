@@ -73,11 +73,12 @@ function wireDots(el) {
 
 function playerCards(ctx, f) {
   const cfg = ctx.baseModel.dataset.config, id = f.id, name = nameOf(ctx, id);
-  const kicker = `Jahresrückblick ${f.year}${f.running ? ' · bisher' : ''}`;
+  // every card says who and which year, so a shared image stands on its own (the first card's title is the name)
+  const head = `Jahresrückblick ${f.year}${f.running ? ' · bisher' : ''}`, kicker = `${head} · ${name}`;
   const games = ctx.baseModel.dataset.games;
   const yearGames = linkTo(ctx, 'spiele', { spieler: id, von: `${f.year}-01-01`, bis: `${f.year}-12-31` });
   const cards = [];
-  cards.push({ kicker, title: name, big: fmt.int(f.games), bigLabel: f.games === 1 ? 'Spiel' : 'Spiele',
+  cards.push({ kicker: head, title: name, big: fmt.int(f.games), bigLabel: f.games === 1 ? 'Spiel' : 'Spiele',
     sub: `an ${fmt.int(f.days)} ${f.days === 1 ? 'Tag' : 'Tagen'} · Platz ${f.gamesRank} von ${f.gamesOf} nach Spielen`,
     lines: [{ label: 'Einzel', value: fmt.int(f.singles) }, { label: 'Doppel', value: fmt.int(f.doubles) }], link: yearGames });
   const diff = f.eloEnd - f.eloStart;
@@ -112,11 +113,11 @@ function playerCards(ctx, f) {
 }
 
 function leagueCards(ctx, f) {
-  const kicker = `Jahresrückblick ${f.year}${f.running ? ' · bisher' : ''}`;
+  const head = `Jahresrückblick ${f.year}${f.running ? ' · bisher' : ''}`, kicker = `${head} · ganze Runde`;
   const games = ctx.baseModel.dataset.games;
   const P = (id, value, tone) => ({ label: nameOf(ctx, id), value, tone, link: linkTo(ctx, 'player', { id }) });
   const cards = [];
-  cards.push({ kicker, title: 'Die ganze Runde', big: fmt.int(f.games), bigLabel: 'Spiele',
+  cards.push({ kicker: head, title: 'Die ganze Runde', big: fmt.int(f.games), bigLabel: 'Spiele',
     sub: `${f.players} Spieler · ${fmt.int(f.singles)} Einzel, ${fmt.int(f.doubles)} Doppel`,
     link: linkTo(ctx, 'spiele', { von: `${f.year}-01-01`, bis: `${f.year}-12-31` }) });
   if (f.top.length) cards.push({ kicker, title: f.running ? 'Rangliste heute' : 'Rangliste am Jahresende',

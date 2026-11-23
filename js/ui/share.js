@@ -37,7 +37,8 @@ export async function openShare(spec, name) {
   document.body.appendChild(sheet);
   document.addEventListener('keydown', onKey);
 
-  const canvas = await cardCanvas(spec, { stamp: new Date().toLocaleDateString('de-AT') });
+  // the footer says when the image was made, so a forwarded image still says „when“
+  const canvas = await cardCanvas(spec, { stamp: `Stand ${new Date().toLocaleDateString('de-AT')}` });
   const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
   if (!sheet) return;
   const url = URL.createObjectURL(blob);

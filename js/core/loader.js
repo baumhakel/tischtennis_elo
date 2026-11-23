@@ -84,6 +84,7 @@ export function load(raw) {
   games.sort((a, b) => a.t - b.t || SOURCE_ORDER[a.source] - SOURCE_ORDER[b.source] || a.row - b.row);
   games.forEach((g, i) => { g.g = i; });
   counts.games = games.length;
+  flagDuplicates(games, config.duplicate_window_minutes, report);
 
   return { config, players, games, issues, counts, hash: datasetHash(config, players, games) };
 }
@@ -471,6 +472,31 @@ function toGame(r, idByName, unknown, report) {
     game.replaced = r.replaced.map(x => ({ from: idByName.get(norm(x.from)) ?? null, fromName: x.from, to: idByName.get(norm(x.to)) }));
   }
   return game;
+}
+
+// ───────── 5b. possible duplicates ─────────
+
+/** Two games with the same players on the same sides within `minutes` (by the played time) are probably one
+ *  game entered twice. Flagged, never dropped: two quick games with the same result are possible. Pairs of
+ *  Altdaten are skipped (their times are interpolated, so neighbours are always close). */
+export function flagDuplicates(games, minutes, report) {
+  if (!(minutes > 0)) return;
+  const win = minutes / 1440 + 1e-9;
+  const key = x => [x.winners.slice().sort().join('+'), x.losers.slice().sort().join('+')].join('>');
+  for (let i = 0; i < games.length; i++) {
+    const a = games[i], ka = key(a);
+    for (let j = i + 1; j < games.length && games[j].t - a.t <= win; j++) {
+      const b = games[j];
+      if (a.source === 'legacy' && b.source === 'legacy') continue;
+      if (key(b) !== ka) continue;
+      (a.dupes ||= []).push(b.ref);
+      (b.dupes ||= []).push(a.ref);
+      const secs = Math.round((b.t - a.t) * 86400), gap = Math.round(secs / 60);
+      report('warning', 'possible_duplicate',
+        `Möglicherweise doppelt eingetragen: die Spiele ${a.ref} und ${b.ref} (gleiche Spieler, gleiches Ergebnis, ${secs < 60 ? 'weniger als eine Minute' : gap === 1 ? 'eine Minute' : `${gap} Minuten`} auseinander). War es nur ein Spiel, eines davon im Tab „corrections“ mit „void“ streichen.`,
+        { ref: `${a.ref}, ${b.ref}` });
+    }
+  }
 }
 
 // ───────── 6. hash ─────────

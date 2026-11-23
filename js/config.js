@@ -1,6 +1,6 @@
 // Static app constants. No side effects: safe to import from core/ (browser, worker, Node).
 
-export const APP_VERSION = '2.0.0-dev.13';   // bump to invalidate the browser cache
+export const APP_VERSION = '2.0.0-dev.14';   // bump to invalidate the browser cache
 
 // >>> FILL IN: OAuth client ID (ends in .apps.googleusercontent.com)
 export const CLIENT_ID = '975581090195-pgfv9ptq40fkp728151hqpru116pg732.apps.googleusercontent.com';
@@ -132,6 +132,8 @@ export const CONFIG_DEFAULTS = {
   // Phase 15: Jahresrückblick season (teaser on the Übersicht); from > until wraps the new year
   year_review_from:              { type: 'monthday', value: [12, 1] },
   year_review_until:             { type: 'monthday', value: [1, 31] },
+  // Phase 17: same players and result within this many minutes → „Möglicherweise doppelt eingetragen“ (0 = off)
+  duplicate_window_minutes:      { type: 'integer', value: 5,    min: 0 },
   // Phase 13: Zeitraum and Monatssieger
   default_time_range:            { type: 'enum',    value: 'gesamt', options: ['gesamt', 'monat', 'vormonat', 'jahr'] },
   monthly_min_games:             { type: 'integer', value: 10,   min: 1 },   // Monatsaufsteiger: games in the month

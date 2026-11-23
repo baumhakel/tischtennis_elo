@@ -4,6 +4,7 @@ import { h, render } from '../ui/dom.js';
 import * as fmt from '../ui/format.js';
 import { tile, viewHead, modeNote, MODE_WORD } from './common.js';
 import { findGame, gameFacts, sameRefCount } from './game-query.js';
+import { formatRef } from '../core/normalize.js';
 import { linkTo, gameLink } from './games.js';
 import { earnedInGame } from './badges.js';
 import { shareButton } from '../ui/share.js';
@@ -63,6 +64,9 @@ function page(ctx) {
       'Elo-Punkte: Der Sieger bekommt K × (1 − Siegchance vorher), der Verlierer verliert gleich viele. Im Doppel gilt das für jeden Partner, und die Teamstärke ist der Mittelwert der beiden Elo-Werte.',
       ['Der Zeitstempel unten bestimmt das Spiel eindeutig. Ist das Ergebnis falsch, ihn bitte ', ctx.model.dataset.config.form_support_url ? h('a', { href: ctx.model.dataset.config.form_support_url, target: '_blank', rel: 'noopener' }, 'im Support-Formular') : 'im Support-Formular', ' unter „Betroffenes Spiel“ angeben.']].map(x => (Array.isArray(x) ? h('p', {}, x) : x)) }),
     missing ? h('p', { class: 'error' }, 'Dieses Spiel gibt es in den geladenen Daten nicht (mehr). Angezeigt wird das letzte Spiel.') : null,
+    x.dupes ? h('p', { class: 'hint' }, 'Möglicherweise doppelt eingetragen: ',
+      x.dupes.map((ref, i) => [i ? ', ' : '', h('a', { class: 'inline-link', ...linkTo(ctx, 'spiel', { ref }) }, dupLabel(dataset, ref))]),
+      ' hat dieselben Spieler und dasselbe Ergebnis. War es nur ein Spiel, bitte eines davon streichen lassen.') : null,
     h('p', { class: 'lead' }, `${team(x.winners)} ${x.double ? 'schlagen' : 'schlägt'} ${team(x.losers)}.`),
     h('div', { class: 'sides' }, side('Gewonnen', W, 'win'), side('Verloren', L, 'loss')),
     ctx.badges ? earnedInGame(ctx, ctx.badges, ctx.mode === 'alle' ? g : findGame(ctx.baseModel.dataset, x.ref)) : null,
@@ -88,6 +92,12 @@ function page(ctx) {
       h('dt', {}, 'Zeitstempel'), h('dd', {}, h('code', {}, x.ref)),
       dup > 1 ? [h('dt', {}, 'Hinweis'), h('dd', {}, `${dup} Spiele haben diesen Zeitstempel, hier steht das erste.`)] : null),
   ];
+}
+
+/** „Ein Spiel um 12:10:40 Uhr“ for the duplicate hint (with seconds: duplicates are often in the same minute). */
+function dupLabel(dataset, ref) {
+  const i = findGame(dataset, ref), x = i >= 0 ? dataset.games[i] : null;
+  return x ? `Ein Spiel um ${formatRef(x.t).slice(11)} Uhr` : `Das Spiel ${ref}`;
 }
 
 /** „Gespielt 17.11.2026, 12:10 Uhr · eingetragen 13:31 Uhr“ (the date of the entry only when it differs). */

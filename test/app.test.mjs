@@ -62,9 +62,9 @@ test('filters: config defaults, inactive hidden, provisional listed', () => {
   assert.equal(visible(d, elo, { minGames: 0, inactivityDays: 0 }, now).shown.length, elo.ids.length);
 });
 
-test('demo data loads without issues', () => {
+test('demo data loads without issues (except the one game entered twice on purpose)', () => {
   const d = load(demoRaw('Europe/Vienna'));
-  assert.deepEqual(d.issues, []);
+  assert.deepEqual(d.issues.map(i => i.kind), ['possible_duplicate']);
   assert.equal(d.counts.beforeCutoff, 1);
   assert.ok(d.games.length > 200);
 });

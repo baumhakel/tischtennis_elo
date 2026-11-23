@@ -53,6 +53,9 @@ export function demoRaw(timeZone, size = 'klein') {
   const late = spiele.at(-6), lateT = spiele.at(-1)[0] + 10 / 1440, playedT = late[0] - 1 / 24;
   spiele.push([lateT, late[3], late[4], late[1], late[2]]);
   const ref = t => formatRef(roundSerial(t));
+  // one game entered twice, 40 seconds apart (shown as „Möglicherweise doppelt eingetragen“)
+  const twice = spiele.at(-15);
+  spiele.splice(spiele.indexOf(twice) + 1, 0, [twice[0] + 40 / 86400, ...twice.slice(1)]);
   // and one with the wrong opponent, fixed by a `replace` row
   const wrong = spiele.at(-10), right = NAMES.find(n => !wrong.slice(1).includes(n));
   const corrections = [['game_ref', 'action', 'note', 'played_at', 'wrong_player', 'right_player'],

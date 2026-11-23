@@ -4,7 +4,8 @@
 //   1. config → typed values with defaults
 //   2. players + aliases → ID lookup by normalised name
 //   3. legacy + Spiele rows → one schema; Spiele rows before responses_valid_from dropped
-//   4. corrections (void / swap / move) matched by game_ref; move sets the time to played_at, the ref stays
+//   4. corrections (void / swap / move / replace) matched by game_ref; move sets the time to played_at, the ref
+//      stays; replace puts right_player in place of wrong_player
 //   5. names → IDs, shape check (1v1 or 2v2), no player twice in one game
 //   6. sort by time, legacy first on ties, then sheet row; assign g; hash
 // Bad data never throws: it becomes an Issue and the affected row is skipped.
@@ -29,7 +30,7 @@ export function load(raw) {
   /** @type {Issue[]} */
   const issues = [];
   const report = (level, kind, message, extra = {}) => issues.push({ level, kind, message, ...extra });
-  const counts = { legacyRows: 0, spieleRows: 0, beforeCutoff: 0, voided: 0, swapped: 0, moved: 0, skipped: 0, games: 0 };
+  const counts = { legacyRows: 0, spieleRows: 0, beforeCutoff: 0, voided: 0, swapped: 0, moved: 0, replaced: 0, skipped: 0, games: 0 };
 
   const config = parseConfig(raw.config, report);
   const { players, idByName } = parsePlayers(raw.players, raw.aliases, report);
@@ -62,7 +63,7 @@ export function load(raw) {
   }
 
   // 4. corrections
-  applyCorrections(raw.corrections, rows, report, counts);
+  applyCorrections(raw.corrections, rows, report, counts, idByName);
 
   // 5. map names → IDs, validate
   const unknown = new Map();   // norm(name) → { name, count, refs[] }
@@ -320,7 +321,7 @@ function parseGameRows(source, grid, report, counts) {
 
 // ───────── 4. corrections ─────────
 
-function applyCorrections(grid, rows, report, counts) {
+function applyCorrections(grid, rows, report, counts, idByName) {
   if (!grid || !grid.length) return;
   const tab = TABS.corrections;
   const t = readTable(grid, COLUMNS.corrections, OPTIONAL_COLUMNS.corrections || []);
@@ -339,11 +340,11 @@ function applyCorrections(grid, rows, report, counts) {
     const rawRef = cell(cells, t.col.game_ref);
     const time = parseTime(rawRef);
     const action = norm(cell(cells, t.col.action));
-    if (time == null || !['void', 'swap', 'move'].includes(action)) {
+    if (time == null || !['void', 'swap', 'move', 'replace'].includes(action)) {
       report('warning', 'bad_correction',
         `Tab ${tab}, Zeile ${row}: ` + (time == null
           ? `game_ref „${clean(rawRef)}“ nicht lesbar (Format yyyy-mm-dd hh:mm:ss).`
-          : `Aktion „${clean(cell(cells, t.col.action))}“ unbekannt (erlaubt: void, swap, move).`),
+          : `Aktion „${clean(cell(cells, t.col.action))}“ unbekannt (erlaubt: void, swap, move, replace).`),
         { tab, row });
       continue;
     }
@@ -370,10 +371,37 @@ function applyCorrections(grid, rows, report, counts) {
       moves.set(ref, { row, value: cell(cells, t.col.played_at), hits });
       continue;
     }
+    if (action === 'replace') {
+      replacePlayer(hits, row, ref, clean(cell(cells, t.col.wrong_player)), clean(cell(cells, t.col.right_player)));
+      continue;
+    }
     for (const r of hits) {
       if (r.voided) continue;
       if (action === 'void') { r.voided = true; counts.voided++; }
       else { [r.w, r.l] = [r.l, r.w]; r.corrected = !r.corrected; counts.swapped++; }
+    }
+  }
+
+  // replace: one player swapped for another, wherever they stand (winner or loser). Several rows per game
+  // apply in row order. Players are compared through `aliases`, so any of a player's names works.
+  function replacePlayer(hits, row, ref, wrong, right) {
+    const fail = text => report('warning', 'bad_replace',
+      `Tab „${tab}“, Zeile ${row}: ${text}. Das Spiel ${ref} bleibt unverändert.`, { tab, row, ref });
+    if (t.col.wrong_player < 0 || t.col.right_player < 0) return fail('Die Spalten „wrong_player“ und „right_player“ fehlen');
+    if (!wrong || !right) return fail(`„${wrong ? 'right_player' : 'wrong_player'}“ ist leer`);
+    const id = name => idByName.get(norm(name));
+    const rightId = id(right);
+    if (!rightId) return fail(`„${right}“ (right_player) steht nicht im Tab „aliases“`);
+    const same = name => norm(name) === norm(wrong) || (id(wrong) != null && id(name) === id(wrong));
+    for (const r of hits) {
+      if (r.voided) continue;
+      const names = [...r.w, ...r.l];
+      if (!names.some(same)) { fail(`„${wrong}“ (wrong_player) spielt in diesem Spiel nicht mit`); continue; }
+      if (names.some(n => id(n) === rightId && !same(n))) { fail(`„${right}“ spielt in diesem Spiel schon mit`); continue; }
+      const swapIn = n => (same(n) ? right : n);
+      r.w = r.w.map(swapIn); r.l = r.l.map(swapIn);
+      if (!r.replaced) counts.replaced++;   // games, not rows
+      (r.replaced ||= []).push({ from: wrong, to: right });
     }
   }
 
@@ -439,6 +467,9 @@ function toGame(r, idByName, unknown, report) {
   if (r.sourceRow != null) game.sourceRow = r.sourceRow;
   if (r.corrected) game.corrected = true;
   if (r.moved) { game.moved = true; game.enteredT = r.entered; }
+  if (r.replaced) {
+    game.replaced = r.replaced.map(x => ({ from: idByName.get(norm(x.from)) ?? null, fromName: x.from, to: idByName.get(norm(x.to)) }));
+  }
   return game;
 }
 

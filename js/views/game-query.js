@@ -9,7 +9,7 @@
 //   art       'einzel' | 'doppel'
 //   von, bis  time (yyyy-mm-dd hh:mm:ss) or date (yyyy-mm-dd), inclusive, compared with the time the game
 //             was played (timeRef: differs from game_ref for a moved game)
-//   quelle    'altdaten' | 'formular'           korrigiert  '1' = only corrected games (swapped result or moved)
+//   quelle    'altdaten' | 'formular'           korrigiert  '1' = only corrected games (swapped result, moved or a player replaced)
 //   chance    'lo-hi' (0…1): pre-game win chance in [lo, hi) (hi = 1 inclusive) — of the player's
 //             side when spieler is set, otherwise of either side
 //   letzte    N: only the last N games that pass the other filters
@@ -124,7 +124,7 @@ export function queryGames(model, f) {
     if (f.von && !after(timeRef(x), f.von)) continue;
     if (f.bis && !before(timeRef(x), f.bis)) continue;
     if (f.quelle && (f.quelle === 'altdaten') !== (x.source === 'legacy')) continue;
-    if (f.korrigiert && !x.corrected && !x.moved) continue;
+    if (f.korrigiert && !x.corrected && !x.moved && !x.replaced) continue;
     if (f.chance) {
       const [lo, hi] = f.chance;
       const ok = s ? sideInRange(eW[i], s === 'w', lo, hi) : sideInRange(eW[i], true, lo, hi) || sideInRange(eW[i], false, lo, hi);

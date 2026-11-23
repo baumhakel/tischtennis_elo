@@ -32,7 +32,8 @@ function page(ctx) {
         fact('Formulareinträge', `${fmt.int(counts.spieleRows)}` + (counts.beforeCutoff ? `, davon ${fmt.int(counts.beforeCutoff)} ${counts.beforeCutoff === 1 ? 'Testeintrag' : 'Testeinträge'} vor dem ${config.responses_valid_from != null ? fmt.date(config.responses_valid_from) : '–'}` : '')),
         fact('Korrekturen', `${counts.voided} gestrichen, `,
           countLink(ctx, counts.swapped, 'mit vertauschtem Ergebnis'), ', ',
-          countLink(ctx, counts.moved ?? 0, 'nachgetragen')),
+          countLink(ctx, counts.moved ?? 0, 'nachgetragen'), ', ',
+          countLink(ctx, counts.replaced ?? 0, 'mit korrigiertem Spieler')),
         fact('Nicht gewertet', counts.skipped ? `${counts.skipped} ${counts.skipped === 1 ? 'Zeile' : 'Zeilen'} (siehe Hinweise)` : 'keine'),
         fact('Spieler', `${fmt.int(ctx.model.elo.ids.length)} mit mindestens einem Spiel`))),
 

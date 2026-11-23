@@ -11,22 +11,26 @@ every load and applies the rows. Delete a row to undo it.
 
 Columns (the order doesn't matter, the app finds them by header):
 
-  game_ref | action | note | played_at
+  game_ref | action | note | played_at | wrong_player | right_player
 
   game_ref   Which game. The game's Zeitstempel, best copied from the
              app's game page (at the bottom). Copying it from the sheet
              also works: "dd.mm.yyyy hh:mm:ss" from Spiele or
              "yyyy-mm-dd hh:mm:ss" from legacy, as text or as a date cell.
-  action     void, swap or move (see below).
+  action     void, swap, move or replace (see below).
   note       Free text for yourself, e.g. who reported it. Optional.
   played_at  Only for move: when the game was really played.
-             Leave it empty for void and swap.
+  wrong_player, right_player
+             Only for replace: the name entered by mistake and the
+             player who really played.
+Leave the columns an action doesn't use empty.
 
-The header "played_at" has to be added once by hand, as the last column.
+The headers "played_at", "wrong_player" and "right_player" have to be
+added once by hand, at the end.
 
 
-2. THE THREE ACTIONS
---------------------
+2. THE FOUR ACTIONS
+-------------------
 
   void   The game is removed. Use it for test entries, duplicates and
          games that never happened.
@@ -39,6 +43,13 @@ The header "played_at" has to be added once by hand, as the last column.
          played_at: a date-time cell, or text "dd.mm.yyyy hh:mm" or
          "yyyy-mm-dd hh:mm" (seconds optional). A rough time is fine,
          but it needs a time of day and must not be later than the entry.
+
+  replace
+         One player is exchanged for another, wherever they stand
+         (winner or loser, singles or doubles). Use it when a wrong
+         name was picked in the form. Any name of a player works (old
+         names too), upper or lower case doesn't matter. A misspelt
+         name that isn't a player at all can be fixed the same way.
 
 A moved game keeps its Zeitstempel (the entry time). So links to it and
 other correction rows still find it under that Zeitstempel. Everything
@@ -58,11 +69,10 @@ Wrong winner (right players, wrong side won)
   One row:  <Zeitstempel> | swap | <note>
 
 Wrong player (e.g. the wrong opponent)
-  1. Void the wrong game:  <wrong Zeitstempel> | void | wrong opponent
-  2. Enter the right game in the Ergebnis form.
-  3. Move the new entry to the wrong game's time:
-       <new Zeitstempel> | move | replaces wrong entry | <wrong Zeitstempel>
-  The result is exactly as if the game had been entered correctly.
+  One row:  <Zeitstempel> | replace | <note> | | Bernd | Clara
+  (Bernd was entered, Clara really played.) Two wrong players in one
+  game: two rows. The result is exactly as if the game had been entered
+  correctly.
 
 Game entered twice
   Void one of the two:  <Zeitstempel> | void | duplicate
@@ -74,7 +84,8 @@ Interpolated time of an old (legacy) game is off
 4. RULES
 --------
 
-- One game may have several rows, e.g. swap and move.
+- One game may have several rows, e.g. swap, move and replace.
+  replace rows apply in their order in the tab.
 - void wins over everything else.
 - Two move rows for the same game: the later row counts, and the app
   shows a hint.
@@ -91,10 +102,12 @@ Interpolated time of an old (legacy) game is off
 
 After adding rows, open the app and refresh. The menu item "Daten und
 Hinweise" counts the corrections ("gestrichen", "mit vertauschtem
-Ergebnis", "nachgetragen")
-and lists every row it could not apply, with the row number. Typical
+Ergebnis", "nachgetragen", "mit korrigiertem Spieler") and lists every row it could not apply, with the row number. Typical
 reasons: the Zeitstempel matches no game, the action is misspelled, or
 played_at is empty, unreadable, has no time of day or lies after the
-entry. A move row with a problem leaves the game at its entry time.
+entry, wrong_player doesn't play in that game, right_player is not a
+player or already plays in it. A row with a problem changes nothing.
 
-Alle Spiele -> filter "korrigiert" lists every swapped or moved game.
+Alle Spiele -> filter "korrigiert" lists every corrected game. The game
+page says what was corrected ("Nachgetragen", "Spieler korrigiert:
+Clara statt Bernd").

@@ -53,6 +53,8 @@
  * @property {boolean} [corrected] result swapped by a `corrections` row
  * @property {boolean} [moved]     time set by a `move` row in `corrections` (Nachgetragen); t = played_at
  * @property {number} [enteredT]   moved games only: the row's own timestamp (when it was entered)
+ * @property {{from: ?string, fromName: string, to: string}[]} [replaced]  players fixed by `replace` rows
+ *                                 (from = ID of the wrongly entered player, null if that name is unknown)
  */
 
 /**
@@ -60,7 +62,7 @@
  * @property {'error'|'warning'} level
  * @property {string} kind      missing_column | bad_config | missing_config | missing_cutoff | bad_timestamp |
  *                              unknown_name | invalid_game | duplicate_player | bad_correction |
- *                              unmatched_correction | ambiguous_correction | bad_move | duplicate_move | bad_alias |
+ *                              unmatched_correction | ambiguous_correction | bad_move | duplicate_move | bad_replace | bad_alias |
  *                              legacy_after_cutoff
  * @property {string} message   German, for the UI
  * @property {string} [tab]
@@ -78,6 +80,7 @@
  * @property {number} voided
  * @property {number} swapped
  * @property {number} moved
+ * @property {number} replaced
  * @property {number} skipped       rows dropped because of an issue
  * @property {number} games         valid games in Dataset.games
  */

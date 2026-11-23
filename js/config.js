@@ -30,13 +30,14 @@ export const COLUMNS = {
                  l1: ['Verlierer 1'], l2: ['Verlierer 2'] },
   players:     { id: ['id'], display_name: ['display_name'], active: ['active'], google_accounts: ['google_accounts'] },
   aliases:     { name: ['name'], player_id: ['player_id'] },
-  corrections: { game_ref: ['game_ref'], action: ['action'], note: ['note'], played_at: ['played_at'] },
+  corrections: { game_ref: ['game_ref'], action: ['action'], note: ['note'], played_at: ['played_at'],
+    wrong_player: ['wrong_player'], right_player: ['right_player'] },
 };
 
 // Optional columns: missing ones are not an error.
 export const OPTIONAL_COLUMNS = {
   legacy: ['source_row'],
-  corrections: ['note', 'played_at'],
+  corrections: ['note', 'played_at', 'wrong_player', 'right_player'],
   players: ['google_accounts'],
 };
 

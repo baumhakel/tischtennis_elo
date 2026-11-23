@@ -53,7 +53,11 @@ export function demoRaw(timeZone, size = 'klein') {
   const late = spiele.at(-6), lateT = spiele.at(-1)[0] + 10 / 1440, playedT = late[0] - 1 / 24;
   spiele.push([lateT, late[3], late[4], late[1], late[2]]);
   const ref = t => formatRef(roundSerial(t));
-  const corrections = [['game_ref', 'action', 'note', 'played_at'], [ref(lateT), 'move', 'Demo: nachgetragen', ref(playedT)]];
+  // and one with the wrong opponent, fixed by a `replace` row
+  const wrong = spiele.at(-10), right = NAMES.find(n => !wrong.slice(1).includes(n));
+  const corrections = [['game_ref', 'action', 'note', 'played_at', 'wrong_player', 'right_player'],
+    [ref(lateT), 'move', 'Demo: nachgetragen', ref(playedT), '', ''],
+    [ref(wrong[0]), 'replace', 'Demo: falscher Gegner', '', wrong[3], right]];
 
   const demoValue = { responses_valid_from: cutoff, form_result_url: DEMO_FORM, form_support_url: DEMO_FORM, form_management_url: DEMO_FORM };
   const config = [['key', 'value', 'note'], ...Object.entries(CONFIG_DEFAULTS)

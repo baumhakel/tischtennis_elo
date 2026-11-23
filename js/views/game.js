@@ -84,6 +84,7 @@ function page(ctx) {
         : `Formulareintrag, Zeile ${x.row}`),
       x.corrected ? [h('dt', {}, 'Korrektur'), h('dd', {}, 'Ergebnis nachträglich getauscht')] : null,
       x.moved ? [h('dt', {}, 'Nachgetragen'), h('dd', {}, enteredText(x))] : null,
+      x.replaced ? [h('dt', {}, 'Spieler korrigiert'), h('dd', {}, x.replaced.map(r => `${name(r.to)} statt ${r.from ? name(r.from) : r.fromName}`).join(', '))] : null,
       h('dt', {}, 'Zeitstempel'), h('dd', {}, h('code', {}, x.ref)),
       dup > 1 ? [h('dt', {}, 'Hinweis'), h('dd', {}, `${dup} Spiele haben diesen Zeitstempel, hier steht das erste.`)] : null),
   ];

@@ -14,6 +14,7 @@
 //   xFmt?: (x) => string, xRange?: [min, max]   numeric x axis labels / fixed range
 //   series[].points: draw point markers (calibration)
 //   series[].face: { img, text } a face at the end of the line (Phase 18b): the image, or the initials
+//   facesAt: 'end' (default) | 'start': where the faces sit (start = the left end, Übersicht)
 // }
 import uPlot from '../../vendor/uPlot.esm.js';
 import { chrome, onThemeChange } from '../colors.js';
@@ -96,9 +97,10 @@ function drawFaces(u, spec) {
   const ends = [];
   spec.series.forEach((s, j) => {
     if (!s.face) return;
-    let i = s.values.length - 1;
-    while (i >= 0 && s.values[i] == null) i--;
-    if (i < 0) return;
+    const start = spec.facesAt === 'start';
+    let i = start ? 0 : s.values.length - 1;
+    while (i >= 0 && i < s.values.length && s.values[i] == null) i += start ? 1 : -1;
+    if (i < 0 || i >= s.values.length) return;
     const x = Math.min(left + width - r - px, Math.max(left + r, u.valToPos(spec.x[i], 'x', true)));
     const y = u.valToPos(s.values[i], 'y', true);
     if (!Number.isFinite(x) || !Number.isFinite(y)) return;

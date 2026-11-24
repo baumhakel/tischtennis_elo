@@ -209,7 +209,7 @@ function curves(ctx) {
   });
   const N = model.dataset.games.length;
   return {
-    x, xType: axis === 'date' ? 'time' : 'num', series, height: 240, y: {},
+    x, xType: axis === 'date' ? 'time' : 'num', series, height: 240, y: {}, facesAt: 'start',   // faces at the left: the right end is the interesting part
     note: N ? [h('a', { class: 'inline-link', ...linkTo(ctx, 'spiele', { von: timeRef(model.dataset.games[start]) }) },
       `${N - start} Spiele seit dem ${fmt.date(model.dataset.games[start].t)}`), '.',
       filters.xAxis === 'own' ? ' Die x-Achse zeigt hier die Spielnummer.' : ''] : '',

@@ -58,9 +58,12 @@
 }
 
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+/* the canvas behind the app is the table green (shows when the page is pulled past its top, and under the
+   iOS status bar); the page itself paints its own background, at least one screen high */
+html { -webkit-text-size-adjust: 100%; background: var(--table); }
 body {
   margin: 0; background: var(--paper); color: var(--ink);
+  min-height: 100vh; min-height: 100dvh;
   font: 16px/1.45 var(--text);
   padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
 }
@@ -79,8 +82,6 @@ code { font-size: 0.9em; }
   border-bottom: 3px solid var(--edge);
   padding-top: env(safe-area-inset-top);   /* the installed iOS app draws the band under the status bar */
 }
-/* pulling the page down (rubber band) shows the table green above the band, not the page background */
-.band::before { content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: 100vh; background: var(--table); }
 .band-inner {
   max-width: 720px; margin: 0 auto; padding: var(--s3) var(--s4);
   display: flex; align-items: center; justify-content: space-between; gap: var(--s3);

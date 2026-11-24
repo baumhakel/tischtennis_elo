@@ -31,6 +31,9 @@ export const VIEWS = [
   { id: 'abzeichen',   title: 'Abzeichen',                    load: () => import('./badges.js') },
   { id: 'rueckblick',  title: 'Jahresrückblick',              load: () => import('./review.js') },
   { id: 'ruhmeshalle', title: 'Ruhmeshalle',                  load: () => import('./hall.js') },
+  { id: 'eintragen',   title: 'Ergebnis eintragen', menu: false, load: () => import('./enter.js') },     // Phase 18a: Mitmachen
+  { id: 'melden',      title: 'Problem melden',   menu: false, load: () => import('./report.js') },
+  { id: 'verwalten',   title: 'Spieler verwalten', menu: false, load: () => import('./manage.js') },
   { id: 'entdecken',   title: 'Entdecken',                    load: () => import('./entdecken.js') },
   { id: 'more',        title: 'Entdecken',        menu: false, load: () => import('./entdecken.js') },   // old links
 ];

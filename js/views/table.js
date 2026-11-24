@@ -7,6 +7,9 @@ import * as fmt from '../ui/format.js';
 import { resolveFilters, visible } from '../core/filters.js';
 import { modelFor } from '../app/modes.js';
 import { viewHead, nameOf as nameOfK, plainTable, linkTo } from './common.js';
+import { formReady } from '../app/forms.js';
+import { wonLabel } from './enter-logic.js';
+import { confirmResult } from './enter-confirm.js';
 import {
   outcome, splits, whoPlays, gamesTodayWeek, prefillUrl, applyGames, standings, ratingOf,
   winsNeeded, shrunkResiduals, suggestions,
@@ -62,7 +65,7 @@ function page(ctx, rerender) {
     viewHead('Tisch', 'Wer steht am Tisch?', { info: [
       'Wähle, wer da ist. Bei mehr Leuten als Plätzen spielen die, die heute am wenigsten gespielt haben (danach: wer zuletzt Pause hatte, wer diese Woche weniger gespielt hat). „Nächste Runde“ wechselt durch.',
       'Im Doppel steht die ausgeglichenste Aufteilung oben. Siegchance und Elo-Punkte rechnen genau wie die Wertung: Der Sieger bekommt K × (1 − Siegchance), im Doppel zählt der Mittelwert der Partner.',
-      'Nichts hier wird gespeichert, bis jemand das Ergebnis-Formular absendet.'] }),
+      'Nichts hier wird gespeichert, bis jemand das Ergebnis einträgt („… hat gewonnen“).'] }),
     kindSel ? h('div', { class: 'toolbar' }, kindSel) : null,
     presentBox,
   ];
@@ -141,7 +144,10 @@ function preview(ctx, A, B, name, set) {
           h('span', { class: 'second' }, `${WORD[secondary]}: ${fmt.signed(q.delta, 1)} · ${rank(q.rankBefore, q.rankAfter)}`));
       })),
       h('div', { class: 'menu-actions' },
-        url ? h('a', { class: 'button-link', href: url, target: '_blank', rel: 'noopener', 'data-form': 'ergebnis' }, 'Ergebnis eintragen') : null,
+        // Phase 18a: entered by the app itself (confirm, send, check) once the question IDs are in config
+        formReady(cfg, 'result')
+          ? h('button', { type: 'button', class: 'small', onclick: () => confirmResult(ctx, W, L, name, () => ctx.actions.sendResult(W, L)) }, wonLabel(W, name))
+          : url ? h('a', { class: 'button-link', href: url, target: '_blank', rel: 'noopener', 'data-form': 'ergebnis' }, wonLabel(W, name)) : null,
         h('button', { type: 'button', class: 'secondary small', onclick: () => set(() => { session.hypo.push({ winners: W, losers: L }); }) }, 'Was wäre, wenn …')));
   };
 

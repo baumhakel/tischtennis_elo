@@ -5,11 +5,12 @@ import { resolveFilters, visible, resolveFocus } from './core/filters.js';
 import { createAuth } from './io/auth.js';
 import { batchGet } from './io/sheets.js';
 import { loadCache, saveCache, clearCache } from './io/cache.js';
-import { demoRaw, demoAuth } from './io/demo.js';
+import { demoRaw, demoAuth, demoForms } from './io/demo.js';
 import { createStore, initialState } from './app/store.js';
 import { parseHash, formatHash } from './app/url.js';
 import { createPipeline } from './app/pipeline.js';
 import { createAfterEntry } from './app/after-entry.js';
+import { createSubmit, formTransport, demoTransport } from './app/submit.js';
 import { createInstall } from './app/install.js';
 import { createUsage } from './app/usage.js';
 import { createRouter } from './app/router.js';
@@ -29,8 +30,10 @@ const now = () => nowSerial(SHEET_TIMEZONE);
 
 // ── dependencies (demo mode swaps Google and the cache for stand-ins) ──
 const auth = demo ? demoAuth() : createAuth({ clientId: CLIENT_ID });
+// demo: what was „sent“ from the app is added to the made-up data (io/demo.js demoForms)
+const demoBox = demo ? demoForms(SHEET_TIMEZONE) : null;
 const fetchRaw = demo
-  ? async () => demoRaw(SHEET_TIMEZONE, demoParam)
+  ? async () => demoBox.apply(demoRaw(SHEET_TIMEZONE, demoParam))
   : token => batchGet({ token, spreadsheetId: SPREADSHEET_ID });
 let memo = null;
 const cache = demo
@@ -47,6 +50,8 @@ let storage;
 try { storage = window.localStorage; storage.getItem('x'); } catch { const m = new Map(); storage = { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)), removeItem: k => m.delete(k) }; }
 const usage = createUsage({ storage, version: APP_VERSION, onChange: u => store.set({ usage: u }) });   // early: the browser may offer installing right away
 const afterEntry = createAfterEntry({ store, refresh: () => pipeline.refresh(), hasToken: () => !!auth.getToken() });
+// entering in the app (Phase 18a): results and reports as form responses, Verwaltung via the pre-filled form
+const submit = createSubmit({ store, afterEntry, storage, transport: demo ? demoTransport(demoBox) : formTransport() });
 
 const actions = {
   /** filters (optional): patch of the global filters, e.g. { focus: [...] } to highlight players. */
@@ -69,6 +74,12 @@ const actions = {
   refresh: () => (auth.getToken() ? pipeline.refresh() : actions.signIn()),
   install: () => { usage.count('aktion:installieren'); install.prompt(); },
   setUsageOff: off => usage.setOff(off),
+  sendResult: (winners, losers) => submit.result(winners, losers),
+  recentResult: (winners, losers) => submit.recentResult(winners, losers),
+  sendSupport: answers => submit.support(answers),
+  managementUrl: (action, fields) => submit.managementUrl(action, fields),
+  managementOpened: (action, fields) => submit.managementOpened(action, fields),
+  managementDemo: (action, fields) => submit.managementDemo(action, fields),
   noticeRetry: () => afterEntry.retry(),
   noticeDismiss: () => afterEntry.dismiss(),
   signOut() { auth.signOut(); store.set({ data: { needsSignIn: true } }); },

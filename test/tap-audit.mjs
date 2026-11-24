@@ -19,7 +19,8 @@ const SIZES = quick ? ['demo'] : ['demo', 'demo=gross'];
 const MODES = quick ? [null] : [null, 'einzel', 'doppel'];
 const MES = quick ? ['ich'] : ['ich', 'zuschauer'];
 const IDS = new Set(VIEWS.map(v => v.id));
-const DIRECT = VIEWS.filter(v => v.menu !== false && !['player', 'h2h', 'more'].includes(v.id)).map(v => v.id);
+const DIRECT = VIEWS.filter(v => v.menu !== false && !['player', 'h2h', 'more'].includes(v.id)).map(v => v.id)
+  .concat(['eintragen', 'melden', 'verwalten']);   // Phase 18a: reached from the menu (Mitmachen)
 const MIN = 44;
 
 // player names of both demo sizes → „<Spieler>“ in labels, so rows of different players group together

@@ -13,6 +13,7 @@ import { shareButton } from '../ui/share.js';
 import { boardSpec } from './share-cards.js';
 import { reviewSeason } from './review-logic.js';
 import { forecastTeaser, chance } from './forecast-logic.js';
+import { formReady } from '../app/forms.js';
 
 export default {
   id: 'dashboard',
@@ -25,7 +26,8 @@ export default {
     const board = h('div');
     const meBox = h('div');
     const recent = recentGames();
-    render(el, meBox, tiles, h('h2', {}, 'Aktueller Verlauf'), legend, chartEl, note, recent.el, board);
+    const enterBox = h('div', { class: 'enter-row' });
+    render(el, meBox, tiles, h('h2', {}, 'Aktueller Verlauf'), legend, chartEl, note, enterBox, recent.el, board);
     let chart = null;
 
     function update(c) {
@@ -35,6 +37,7 @@ export default {
       const spec = curves(c);
       render(note, spec.note);
       if (!chart) chart = lineChart(chartEl, spec); else chart.update(spec);
+      render(enterBox, enterLink(c));
       recent.update(c);
       render(board, leaderboard(c));
     }
@@ -42,6 +45,13 @@ export default {
     return { update, unmount() { chart?.destroy(); } };
   },
 };
+
+/** „Ergebnis eintragen“ above Letzte Spiele: the page in the app (Phase 18a), or the form while the IDs are missing. */
+function enterLink(ctx) {
+  const cfg = ctx.baseModel.dataset.config;
+  if (formReady(cfg, 'result')) return h('a', { class: 'button-link', ...linkTo(ctx, 'eintragen') }, 'Ergebnis eintragen');
+  return cfg.form_result_url ? h('a', { class: 'button-link', href: cfg.form_result_url, target: '_blank', rel: 'noopener', 'data-form': 'ergebnis' }, 'Ergebnis eintragen') : null;
+}
 
 // ───────── „Ich“ ─────────
 

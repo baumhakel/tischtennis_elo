@@ -9,6 +9,7 @@ import { linkTo, gameLink } from './games.js';
 import { earnedInGame } from './badges.js';
 import { shareButton } from '../ui/share.js';
 import { gameSpec } from './share-cards.js';
+import { formReady } from '../app/forms.js';
 
 export default {
   id: 'spiel',
@@ -62,7 +63,7 @@ function page(ctx) {
   return [
     viewHead(`${kind}, ${x.approxTime ? `ca. ${fmt.date(x.t)}` : `${fmt.date(x.t)}, ${fmt.time(x.t)} Uhr`}`, null, { key: 'spiel', back: true, share: shareButton(() => gameSpec(ctx, g), { name: 'spiel-' + x.ref }), info: [
       'Elo-Punkte: Der Sieger bekommt K × (1 − Siegchance vorher), der Verlierer verliert gleich viele. Im Doppel gilt das für jeden Partner, und die Teamstärke ist der Mittelwert der beiden Elo-Werte.',
-      ['Der Zeitstempel unten bestimmt das Spiel eindeutig. Ist das Ergebnis falsch, ihn bitte ', ctx.model.dataset.config.form_support_url ? h('a', { href: ctx.model.dataset.config.form_support_url, target: '_blank', rel: 'noopener' }, 'im Support-Formular') : 'im Support-Formular', ' unter „Betroffenes Spiel“ angeben.']].map(x => (Array.isArray(x) ? h('p', {}, x) : x)) }),
+      'Der Zeitstempel unten bestimmt das Spiel eindeutig. Ist das Ergebnis falsch: „Fehler in diesem Spiel melden“ unten, der Zeitstempel steht dann schon in der Meldung.'] }),
     missing ? h('p', { class: 'error' }, 'Dieses Spiel gibt es in den geladenen Daten nicht (mehr). Angezeigt wird das letzte Spiel.') : null,
     x.dupes ? h('p', { class: 'hint' }, 'Möglicherweise doppelt eingetragen: ',
       x.dupes.map((ref, i) => [i ? ', ' : '', h('a', { class: 'inline-link', ...linkTo(ctx, 'spiel', { ref }) }, dupLabel(dataset, ref))]),
@@ -78,7 +79,8 @@ function page(ctx) {
     h('nav', { class: 'links', 'aria-label': 'Weiter' },
       h('a', { class: 'tap', ...linkTo(ctx, 'h2h', duelParams) }, x.double ? 'Alle Spiele dieser beiden Teams' : `Alle Begegnungen von ${name(x.winners[0])} und ${name(x.losers[0])}`),
       x.double ? [x.winners, x.losers].map(t => h('a', { class: 'tap', ...linkTo(ctx, 'team', { a: t[0], b: t[1] }) }, `Team ${team(t)}`)) : null,
-      h('a', { class: 'tap', ...linkTo(ctx, 'history', {}, { focus: ids }) }, 'Im Verlauf ansehen')),
+      h('a', { class: 'tap', ...linkTo(ctx, 'history', {}, { focus: ids }) }, 'Im Verlauf ansehen'),
+      reportLink(ctx, x)),
     h('div', { class: 'pager' },
       g > 0 ? h('a', { class: 'secondary-btn', ...gameLink(ctx, g - 1) }, '‹ Voriges Spiel') : h('span'),
       g < games.length - 1 ? h('a', { class: 'secondary-btn', ...gameLink(ctx, g + 1) }, 'Nächstes Spiel ›') : h('span')),
@@ -92,6 +94,13 @@ function page(ctx) {
       h('dt', {}, 'Zeitstempel'), h('dd', {}, h('code', {}, x.ref)),
       dup > 1 ? [h('dt', {}, 'Hinweis'), h('dd', {}, `${dup} Spiele haben diesen Zeitstempel, hier steht das erste.`)] : null),
   ];
+}
+
+/** „Fehler in diesem Spiel melden“: in the app with the game filled in (Phase 18a), or the Support form. */
+function reportLink(ctx, x) {
+  const cfg = ctx.baseModel.dataset.config;
+  if (formReady(cfg, 'support', ['topic', 'description'])) return h('a', { class: 'tap', ...linkTo(ctx, 'melden', { spiel: x.ref }) }, 'Fehler in diesem Spiel melden');
+  return cfg.form_support_url ? h('a', { class: 'tap', href: cfg.form_support_url, target: '_blank', rel: 'noopener', 'data-form': 'support' }, 'Fehler in diesem Spiel melden') : null;
 }
 
 /** „Ein Spiel um 12:10:40 Uhr“ for the duplicate hint (with seconds: duplicates are often in the same minute). */

@@ -1,6 +1,6 @@
 // Static app constants. No side effects: safe to import from core/ (browser, worker, Node).
 
-export const APP_VERSION = '2.0.0-dev.15';   // bump to invalidate the browser cache
+export const APP_VERSION = '2.0.0-dev.16';   // bump to invalidate the browser cache
 
 // >>> FILL IN: OAuth client ID (ends in .apps.googleusercontent.com)
 export const CLIENT_ID = '975581090195-pgfv9ptq40fkp728151hqpru116pg732.apps.googleusercontent.com';
@@ -18,6 +18,7 @@ export const TABS = {
   players: 'players',
   aliases: 'aliases',
   corrections: 'corrections',
+  management_log: 'management_log',   // Phase 18a: read to show what a Verwaltung action did
 };
 
 // Column headers per tab, matched case-insensitively (trimmed, spaces collapsed).
@@ -32,6 +33,8 @@ export const COLUMNS = {
   aliases:     { name: ['name'], player_id: ['player_id'] },
   corrections: { game_ref: ['game_ref'], action: ['action'], note: ['note'], played_at: ['played_at'],
     wrong_player: ['wrong_player'], right_player: ['right_player'] },
+  management_log: { timestamp: ['timestamp'], action: ['action'], player_id: ['player_id'], old_value: ['old_value'],
+    new_value: ['new_value'], status: ['status'] },
 };
 
 // Optional columns: missing ones are not an error.
@@ -92,6 +95,32 @@ export const CONFIG_DEFAULTS = {
   form_result_entry_winner2:     { type: 'string',  value: '', optional: true },
   form_result_entry_loser1:      { type: 'string',  value: '', optional: true },
   form_result_entry_loser2:      { type: 'string',  value: '', optional: true },
+  // Phase 18a: entering in the app. Question IDs and section numbers are written by writeFormIds (Verwaltung.gs).
+  form_support_entry_topic:      { type: 'string',  value: '', optional: true },   // Support: „Worum geht's?“
+  form_support_entry_description: { type: 'string', value: '', optional: true },   // … „Beschreibung“
+  form_support_entry_game:       { type: 'string',  value: '', optional: true },   // … „Betroffenes Spiel“
+  form_support_entry_name:       { type: 'string',  value: '', optional: true },   // … „Dein Name“
+  // the choices of „Worum geht's?“ exactly as in the form (writeFormIds writes them; a wrong choice drops the response)
+  form_support_topics:           { type: 'names',   value: ['Fehler / Problem', 'Falsches Spielergebnis', 'Idee / Vorschlag', 'Sonstiges'], optional: true },
+  form_management_entry_action:  { type: 'string',  value: '', optional: true },   // Verwaltung: „Aktion“
+  form_management_entry_new_player: { type: 'string', value: '', optional: true }, // … „Neuer Spieler“
+  form_management_entry_new_account: { type: 'string', value: '', optional: true }, // … „Google-Konto (optional)“
+  form_management_entry_old_name: { type: 'string', value: '', optional: true },   // … „Alter Name“
+  form_management_entry_new_name: { type: 'string', value: '', optional: true },   // … „Neuer Name“
+  form_management_entry_inactive_player: { type: 'string', value: '', optional: true }, // … „Inaktiver Spieler“
+  form_management_entry_active_player: { type: 'string', value: '', optional: true },   // … „Aktiver Spieler“
+  form_management_entry_merge_from: { type: 'string', value: '', optional: true }, // … „Doppelter Eintrag“
+  form_management_entry_merge_into: { type: 'string', value: '', optional: true }, // … „Zusammenführen mit“
+  form_management_entry_account_player: { type: 'string', value: '', optional: true }, // … „Spieler“
+  form_management_entry_account: { type: 'string',  value: '', optional: true },   // … „Google-Konto“
+  form_management_page_add:      { type: 'integer', value: null, min: 1, optional: true },   // section numbers of the six branches
+  form_management_page_rename:   { type: 'integer', value: null, min: 1, optional: true },
+  form_management_page_activate: { type: 'integer', value: null, min: 1, optional: true },
+  form_management_page_deactivate: { type: 'integer', value: null, min: 1, optional: true },
+  form_management_page_merge:    { type: 'integer', value: null, min: 1, optional: true },
+  form_management_page_accounts: { type: 'integer', value: null, min: 1, optional: true },
+  // e-mail addresses (comma-separated) that see „Spieler verwalten“ in the app. Only hides the pages: the form's sharing protects it
+  management_accounts:           { type: 'names',   value: null, optional: true },
   // Phase 17: usage counting (app/usage.js) via the hidden „Nutzung“ form. optional: empty = no counting
   form_usage_url:                { type: 'url',     value: '', optional: true },
   form_usage_entry_device:       { type: 'string',  value: '', optional: true },

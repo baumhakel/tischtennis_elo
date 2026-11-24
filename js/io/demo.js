@@ -2,7 +2,8 @@
 // so the app can be tried without Google sign-in. Nothing here is real data.
 
 import { CONFIG_DEFAULTS } from '../config.js';
-import { nowSerial, formatRef, roundSerial } from '../core/normalize.js';
+import { nowSerial, formatRef, roundSerial, norm } from '../core/normalize.js';
+import { checkManage, applyManage } from '../core/manage.js';
 
 const ALL_NAMES = ['Anna', 'Bernd', 'Clara', 'David', 'Elif', 'Felix', 'Greta', 'Hannes', 'Ida', 'Jonas', 'Kira', 'Lukas', 'Mira', 'Noah', 'Olga'];
 
@@ -62,14 +63,68 @@ export function demoRaw(timeZone, size = 'klein') {
     [ref(lateT), 'move', 'Demo: nachgetragen', ref(playedT), '', ''],
     [ref(wrong[0]), 'replace', 'Demo: falscher Gegner', '', wrong[3], right]];
 
-  const demoValue = { responses_valid_from: cutoff, form_result_url: DEMO_FORM, form_support_url: DEMO_FORM, form_management_url: DEMO_FORM };
+  const demoValue = { responses_valid_from: cutoff, form_result_url: DEMO_FORM, form_support_url: DEMO_FORM, form_management_url: DEMO_FORM,
+    management_accounts: DEMO_EMAIL, ...DEMO_IDS };
   const config = [['key', 'value', 'note'], ...Object.entries(CONFIG_DEFAULTS)
     .map(([k, d]) => [k, k in demoValue ? demoValue[k] : d.value, 'Demo'])];
   // the demo account is mapped to the third player, so „Ich“ works without asking
   const players = [['id', 'display_name', 'active', 'google_accounts'],
     ...NAMES.map((n, k) => [`p${String(k + 1).padStart(3, '0')}`, n, true, k === 2 ? DEMO_EMAIL : ''])];
   const aliases = [['name', 'player_id'], ...NAMES.map((n, k) => [n, `p${String(k + 1).padStart(3, '0')}`])];
-  return { config, legacy, spiele, players, aliases, corrections };
+  const management_log = [['timestamp', 'action', 'player_id', 'old_value', 'new_value', 'submitted_by', 'status'],
+    ...NAMES.map((n, k) => [cutoff - 30, 'add', `p${String(k + 1).padStart(3, '0')}`, '', n, 'legacy migration', 'ok'])];
+  return { config, legacy, spiele, players, aliases, corrections, management_log };
+}
+
+// Made-up question IDs, so the demo shows the pages that enter in the app (nothing is sent anywhere)
+const DEMO_IDS = Object.fromEntries([
+  'result_entry_winner1', 'result_entry_winner2', 'result_entry_loser1', 'result_entry_loser2',
+  'support_entry_topic', 'support_entry_description', 'support_entry_game', 'support_entry_name',
+  'management_entry_action', 'management_entry_new_player', 'management_entry_new_account', 'management_entry_old_name',
+  'management_entry_new_name', 'management_entry_inactive_player', 'management_entry_active_player', 'management_entry_merge_from',
+  'management_entry_merge_into', 'management_entry_account_player', 'management_entry_account',
+].map((k, i) => ['form_' + k, String(1000 + i)]));
+
+/**
+ * Demo stand-in for sending forms (Phase 18a): nothing goes over the network. A result becomes a new row in
+ * „Spiele“, a Verwaltung action is checked and done like Verwaltung.gs (with a row in management_log), the next
+ * time the demo data is read. So the whole flow incl. „Angekommen“ works without Google.
+ *   submit('result', { winner1, winner2, loser1, loser2 }) · submit('support', …) · submit('management', { action, fields })
+ *   apply(raw) → raw with everything submitted so far
+ */
+export function demoForms(timeZone) {
+  const ops = [];
+  return {
+    async submit(form, answers) { ops.push({ form, answers, t: nowSerial(timeZone) }); },
+    apply(raw) {
+      for (const op of ops) {
+        if (op.form === 'result') {
+          const a = op.answers;
+          raw.spiele.push([op.t, a.winner1, a.winner2 || '', a.loser1, a.loser2 || '']);
+        } else if (op.form === 'management') manageRaw(raw, op);
+      }
+      return raw;
+    },
+  };
+}
+
+function manageRaw(raw, { answers: { action, fields }, t }) {
+  const rows = raw.players.slice(1);
+  const taken = new Set([...raw.aliases.slice(1).map(r => norm(r[0])), ...rows.map(r => norm(r[1]))]);
+  const db = { players: rows.map(r => ({ id: r[0], name: r[1], active: r[2] !== false, accounts: r[3] ? String(r[3]).split(/,\s*/) : [] })), taken };
+  const reason = checkManage(db, action, fields);
+  const [old, neu] = { add: ['', fields.new_player], rename: [fields.old_name, fields.new_name], activate: [fields.inactive_player, 'TRUE'],
+    deactivate: [fields.active_player, 'FALSE'], merge: [fields.merge_from, fields.merge_into], accounts: [fields.account_player, fields.account] }[action] || ['', ''];
+  const log = [t, action, '', old, neu, DEMO_EMAIL, reason ? `refused: ${reason}` : 'ok'];
+  if (!reason) {
+    const used = [...rows.map(r => r[0]), ...raw.aliases.slice(1).map(r => r[1]), ...raw.management_log.slice(1).map(r => r[2])];
+    const max = Math.max(0, ...used.map(id => Number(/^p(\d+)$/.exec(id)?.[1] || 0)));
+    const next = applyManage(db, action, fields, () => `p${String(max + 1).padStart(3, '0')}`);
+    raw.players = [raw.players[0], ...next.players.map(p => [p.id, p.name, p.active, p.accounts.join(', ')])];
+    for (const [from, into] of next.moves) for (const r of raw.aliases) if (r[1] === from) r[1] = into;
+    raw.aliases.push(...next.aliases);
+  }
+  raw.management_log.push(log);
 }
 
 /** Stand-in for io/auth.js: always signed in. */

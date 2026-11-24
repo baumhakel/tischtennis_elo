@@ -133,7 +133,7 @@ export function viewHead(title, lead = null, { info = null, back = false, key = 
 }
 
 /** Back within the app if the previous entry is ours, otherwise to the Übersicht. */
-function goBack() {
+export function goBack() {
   if (history.state && history.state.inApp) history.back();
   else location.hash = '#/dashboard';
 }

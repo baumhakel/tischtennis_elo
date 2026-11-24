@@ -16,7 +16,8 @@ const LINKS_PER_VIEW = quick ? 2 : 4;          // detail links followed per targ
 const KNOWN = [/accounts\.google\.com\/gsi\/client/, /favicon\.ico/];
 const IDS = new Set(VIEWS.map(v => v.id));
 // views that need a parameter are reached through the links found on the other pages
-const DIRECT = VIEWS.filter(v => v.menu !== false && !['player', 'h2h', 'more'].includes(v.id)).map(v => v.id);
+const DIRECT = VIEWS.filter(v => v.menu !== false && !['player', 'h2h', 'more'].includes(v.id)).map(v => v.id)
+  .concat(['eintragen', 'melden', 'verwalten']);   // Phase 18a: reached from the menu (Mitmachen)
 
 const problems = [];
 const browser = await launch();

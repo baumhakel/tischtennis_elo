@@ -13,13 +13,9 @@ const ENTRY_KEYS = ['form_usage_entry_device', 'form_usage_entry_date', 'form_us
 /** Is the Nutzung form fully set in config? */
 export const usageConfigured = cfg => !!(cfg && cfg.form_usage_url && ENTRY_KEYS.every(k => cfg[k]));
 
-/** The form's respondent link (…/viewform) → the address that takes a response (…/formResponse). */
-export function formResponseUrl(url) {
-  const u = new URL(url);
-  u.pathname = u.pathname.replace(/\/(viewform|formResponse)?\/?$/, '') + '/formResponse';
-  u.search = '';
-  return u.href;
-}
+/** The form's respondent link (…/viewform) → the address that takes a response (…/formResponse). Shared: io/forms.js. */
+export { responseUrl as formResponseUrl } from '../io/forms.js';
+import { responseUrl as formResponseUrl } from '../io/forms.js';
 
 const entry = v => 'entry.' + String(v).replace(/^entry\./, '');
 

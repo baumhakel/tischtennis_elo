@@ -86,7 +86,23 @@ export function load(raw) {
   counts.games = games.length;
   flagDuplicates(games, config.duplicate_window_minutes, report);
 
-  return { config, players, games, issues, counts, hash: datasetHash(config, players, games) };
+  const log = parseLog(raw.management_log);
+  // every name ever used (aliases + display names, normalised): a new name must not be one of them (core/manage.js)
+  const takenNames = [...idByName.keys()];
+  return { config, players, games, issues, counts, takenNames, log, hash: datasetHash(config, players, games, log) };
+}
+
+// ───────── management_log (Phase 18a) ─────────
+
+/** The Verwaltung script's log, oldest first: [{ t, action, player, old, new, status }]. A missing tab = []. */
+function parseLog(grid) {
+  if (!grid || !grid.length) return [];
+  const t = readTable(grid, COLUMNS.management_log);
+  if (t.missing.length) return [];
+  return t.rows.map(({ cells, row }) => ({
+    row, t: parseTime(cell(cells, t.col.timestamp)), action: clean(cell(cells, t.col.action)), player: clean(cell(cells, t.col.player_id)),
+    old: clean(cell(cells, t.col.old_value)), new: clean(cell(cells, t.col.new_value)), status: clean(cell(cells, t.col.status)),
+  }));
 }
 
 // ───────── 1. config ─────────
@@ -501,8 +517,10 @@ export function flagDuplicates(games, minutes, report) {
 
 // ───────── 6. hash ─────────
 
-function datasetHash(config, players, games) {
+function datasetHash(config, players, games, log = []) {
+  const last = log.at(-1);
   const parts = [
+    `log:${log.length}:${last ? `${last.row}:${last.status}` : ''}`,
     JSON.stringify(Object.keys(config).sort().map(k => [k, config[k]])),
     [...players.values()].map(p => `${p.id}:${p.name}:${p.active ? 1 : 0}:${p.accounts.join(';')}`).sort().join(','),
     String(games.length),

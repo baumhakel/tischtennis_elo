@@ -760,3 +760,30 @@ button.small, button.link, .back-link { min-height: 44px; }
 .th-link { position: relative; }
 .th-link::before { inset: -14px -6px; }
 .scatter .pt circle.hit { fill: transparent; stroke: none; }
+
+/* ───────── Phase 18a: entering in the app (Ergebnis eintragen, Problem melden, Spieler verwalten) ───────── */
+a.button-link { min-height: 44px; box-sizing: border-box; }
+.enter-row { margin: var(--s4) 0 var(--s2); }
+.pick-group h3 { margin-bottom: var(--s2); }
+.pick-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip.pick { min-height: 36px; padding: 4px 12px; font-size: 15px; }
+.chip.pick.on { background: var(--table); border-color: var(--table); color: var(--on-table); }
+.chip.pick.on .muted { color: inherit; opacity: 0.8; }
+.chip.pick.elsewhere { color: var(--muted); border-style: dashed; }
+.enter-actions { margin: var(--s4) 0 var(--s2); }
+.form-field { display: flex; flex-direction: column; gap: 6px; margin: var(--s3) 0; }
+.form-field > label, .form-field > .label { font-size: 14px; color: var(--muted); }
+.form-field .muted.small { margin: 0; }
+.form-field input, .form-field select, .form-field textarea {
+  font: inherit; font-size: 16px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface); color: var(--ink); width: 100%; box-sizing: border-box; min-height: 44px;
+}
+.form-field textarea { resize: vertical; min-height: 7em; }
+.sheet-panel h2 { font-size: 18px; margin: 0; }
+.sheet-panel .hint { margin-left: 0; font-size: 15px; }
+.sheet-panel .share-actions { flex-wrap: wrap; }
+.notice.bad { border-left-color: var(--down); }
+.manage-list li a { min-height: 44px; }
+.log-list { list-style: none; margin: 0; padding: 0; }
+.log-list li { padding: 6px 0; border-top: 1px solid var(--line); }
+@media (prefers-color-scheme: dark) { .chip.pick.on { border-color: var(--up); } }

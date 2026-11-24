@@ -15,6 +15,7 @@ import { APP_VERSION } from '../config.js';
 import { windowRange } from '../core/window.js';
 import { viewById } from '../views/index.js';
 import { formatHash } from '../app/url.js';
+import { formReady, canManage } from '../app/forms.js';
 
 const X_LABELS = { date: 'Datum', game: 'Spielnummer', own: 'Eigene Spiele' };
 const TABS = [
@@ -250,15 +251,20 @@ export function createShell(root, { store, actions }) {
         h('p', { class: 'muted small' }, 'Wird nur auf diesem Gerät gespeichert.'));
     }
 
-    // Mitmachen: form links come from the config tab (never from the public code)
-    const forms = cfg ? [
-      [cfg.form_result_url, 'Ergebnis eintragen', 'ergebnis'],
-      [cfg.form_support_url, 'Problem melden oder Idee einreichen', 'support'],
-      [cfg.form_management_url, 'Spieler verwalten', 'verwaltung'],
-    ].filter(([u]) => u) : [];
-    const mitmachen = forms.length ? h('section', { class: 'menu-section', id: 'menu-mitmachen' }, h('h3', {}, 'Mitmachen'),
-      h('ul', { class: 'menu-links' }, forms.map(([u, label, form]) =>
-        h('li', {}, h('a', { class: 'tap', href: u, target: '_blank', rel: 'noopener', 'data-form': form || null }, label))))) : null;
+    // Mitmachen: form links come from the config tab (never from the public code). Since Phase 18a the app
+    // enters results and reports itself once the question IDs are in config; otherwise the form opens.
+    // „Spieler verwalten“ only for management_accounts (when that row exists; before, the form link as until now).
+    const inApp = (view, label) => h('li', {}, h('a', { class: 'tap', href: `#/${view}`, onclick: e => { e.preventDefault(); actions.navigate(view); } }, label));
+    const ext = (u, label, form) => (u ? h('li', {}, h('a', { class: 'tap', href: u, target: '_blank', rel: 'noopener', 'data-form': form }, label)) : null);
+    const items = cfg ? [
+      formReady(cfg, 'result') ? inApp('eintragen', 'Ergebnis eintragen') : ext(cfg.form_result_url, 'Ergebnis eintragen', 'ergebnis'),
+      formReady(cfg, 'support', ['topic', 'description']) ? inApp('melden', 'Problem melden oder Idee einreichen') : ext(cfg.form_support_url, 'Problem melden oder Idee einreichen', 'support'),
+      Array.isArray(cfg.management_accounts)
+        ? (canManage(cfg, auth.email) ? inApp('verwalten', 'Spieler verwalten') : null)
+        : ext(cfg.form_management_url, 'Spieler verwalten', 'verwaltung'),
+    ].filter(Boolean) : [];
+    const mitmachen = items.length ? h('section', { class: 'menu-section', id: 'menu-mitmachen' }, h('h3', {}, 'Mitmachen'),
+      h('ul', { class: 'menu-links' }, items)) : null;
 
     // Daten
     const stamp = data.updatedAt ? fmt.stamp(data.updatedAt) : null;
@@ -308,11 +314,14 @@ export function createShell(root, { store, actions }) {
     if (notice.hidden) return;
     const close = h('button', { type: 'button', class: 'x', 'aria-label': 'Hinweis schließen', onclick: actions.noticeDismiss }, '×');
     const link = (filters, view, params, text) => h('a', { class: 'tap', href: formatHash({ view, params, filters }) }, text);
-    if (n.kind === 'checking') return render(notice, h('span', {}, 'Wird aktualisiert …'));
+    notice.classList.toggle('bad', n.kind === 'refused' || n.kind === 'offline');
+    if (n.kind === 'checking') return render(notice, h('span', {}, n.text || 'Wird aktualisiert …'));
     if (n.kind === 'missing') {
-      return render(notice, h('span', {}, 'Noch nicht angekommen.'),
+      return render(notice, h('span', {}, n.text || 'Noch nicht angekommen.'),
         h('button', { type: 'button', class: 'link', onclick: actions.noticeRetry }, 'Aktualisieren'), close);
     }
+    if (n.kind === 'offline') return render(notice, h('span', {}, 'Keine Verbindung, nichts gesendet.'), close);
+    if (n.kind === 'sent' || n.kind === 'done' || n.kind === 'refused') return render(notice, h('span', {}, n.text), close);
     const games = model.dataset.games.filter(g => n.refs.includes(g.ref));
     const nameOf = id => model.dataset.players.get(id)?.name ?? id;
     const team = ids => ids.map(nameOf).join(' & ');

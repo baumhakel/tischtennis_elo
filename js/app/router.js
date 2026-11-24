@@ -49,15 +49,27 @@ export function createRouter({ store, el, makeCtx, renderEmpty, renderEmptyWindo
     try { view = await loadView(def); }
     catch (e) {
       if (my !== token) return;
+      // Usually a file that couldn't be fetched, e.g. right after a new version went online (files of two
+      // versions mixed, or one fetched while GitHub Pages was still publishing). The browser remembers a
+      // failed module for the rest of the page's life, so only a reload helps: once by itself, then by a button
+      // (an app on the iOS home screen has no reload button of its own).
+      if (reloadOnce()) return;
       el.removeAttribute('aria-busy');
       const p = document.createElement('p');
       p.className = 'error';
-      p.textContent = /uPlot|vendor/.test(String(e?.message)) || /Failed to fetch dynamically imported module/.test(String(e?.message))
-        ? 'Diese Ansicht konnte nicht geladen werden: Eine Datei fehlt (vermutlich js/vendor/uPlot.esm.js oder css/uPlot.min.css).'
-        : `Diese Ansicht konnte nicht geladen werden: ${e?.message || e}`;
-      el.replaceChildren(p);
+      p.textContent = 'Diese Ansicht konnte nicht geladen werden. Meist hilft Neuladen, zum Beispiel wenn gerade eine neue Version veröffentlicht wurde. Hilft das nicht, bitte die Internetverbindung prüfen.';
+      const again = document.createElement('button');
+      again.type = 'button';
+      again.className = 'secondary';
+      again.textContent = 'Neu laden';
+      again.addEventListener('click', () => location.reload());
+      const detail = document.createElement('p');
+      detail.className = 'muted small';
+      detail.textContent = `Technisch: ${e?.message || e}`;
+      el.replaceChildren(p, again, detail);
       return;
     }
+    clearReloadOnce();
     if (my !== token) return;                       // a newer navigation won
     el.removeAttribute('aria-busy');
     const fresh = store.get();
@@ -69,3 +81,16 @@ export function createRouter({ store, el, makeCtx, renderEmpty, renderEmptyWindo
   store.subscribe(s => { sync(s); });
   return { start: () => sync(store.get()) };
 }
+
+// A failed view load reloads the page once by itself; a second failure within a minute shows the message.
+const RELOAD_KEY = 'tt-elo-view-reload';
+function reloadOnce() {
+  try {
+    const last = Number(sessionStorage.getItem(RELOAD_KEY) || 0);
+    if (Date.now() - last < 60000) return false;
+    sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
+  } catch { return false; }
+  location.reload();
+  return true;
+}
+function clearReloadOnce() { try { sessionStorage.removeItem(RELOAD_KEY); } catch { /* ignore */ } }

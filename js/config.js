@@ -1,6 +1,6 @@
 // Static app constants. No side effects: safe to import from core/ (browser, worker, Node).
 
-export const APP_VERSION = '2.0.0-dev.17';   // bump to invalidate the browser cache
+export const APP_VERSION = '2.0.0-dev.18';   // bump to invalidate the browser cache
 
 // >>> FILL IN: OAuth client ID (ends in .apps.googleusercontent.com)
 export const CLIENT_ID = '975581090195-pgfv9ptq40fkp728151hqpru116pg732.apps.googleusercontent.com';
@@ -20,10 +20,13 @@ export const TABS = {
   corrections: 'corrections',
   management_log: 'management_log',   // Phase 18a: read to show what a Verwaltung action did
   fotos: 'fotos',                     // Phase 18b: one row per photo (written by Fotos.gs); optional tab
+  turniere: 'turniere',               // Phase 18: one row per tournament (settings); optional tab
+  turnier_teilnehmer: 'turnier_teilnehmer',   // Phase 18: who plays in which tournament; optional tab
+  turnier_ergebnisse: 'turnier_ergebnisse',   // Phase 18: responses of the Turnierergebnis form; optional tab
 };
 
 // Tabs that may not exist yet: if the sheet doesn't have them, they are read as empty (io/sheets.js).
-export const OPTIONAL_TABS = ['fotos'];
+export const OPTIONAL_TABS = ['fotos', 'turniere', 'turnier_teilnehmer', 'turnier_ergebnisse'];
 
 // Column headers per tab, matched case-insensitively (trimmed, spaces collapsed).
 // Each entry lists accepted header spellings; the first one is canonical.
@@ -132,6 +135,20 @@ export const CONFIG_DEFAULTS = {
   photos_jpeg_quality:           { type: 'number',  value: 0.82, min: 0.3, max: 0.95 },
   photos_per_day:                { type: 'integer', value: 30,   min: 1 },      // uploads per account and day (checked by Fotos.gs)
   photos_cache_mb:               { type: 'integer', value: 150,  min: 10 },     // full images kept on the device (previews always)
+  // Phase 18: tournaments. The Turnierergebnis form (written by setupTurnier in Turnier.gs, entry IDs by writeFormIds)
+  form_tournament_url:           { type: 'url',     value: '', optional: true },
+  form_tournament_entry_tournament: { type: 'string', value: '', optional: true },
+  form_tournament_entry_match:   { type: 'string',  value: '', optional: true },
+  form_tournament_entry_pairing: { type: 'string',  value: '', optional: true },
+  form_tournament_entry_set1:    { type: 'string',  value: '', optional: true },
+  form_tournament_entry_set2:    { type: 'string',  value: '', optional: true },
+  form_tournament_entry_set3:    { type: 'string',  value: '', optional: true },
+  form_tournament_entry_set4:    { type: 'string',  value: '', optional: true },
+  form_tournament_entry_set5:    { type: 'string',  value: '', optional: true },
+  form_tournament_entry_set6:    { type: 'string',  value: '', optional: true },
+  form_tournament_entry_set7:    { type: 'string',  value: '', optional: true },
+  tournament_suggestions:        { type: 'integer', value: 3,  min: 1, max: 8 },   // „Als Nächstes“ on the tournament page
+  tournament_game_minutes:       { type: 'integer', value: 12, min: 3 },           // time estimate until enough results are in
   // Phase 17: usage counting (app/usage.js) via the hidden „Nutzung“ form. optional: empty = no counting
   form_usage_url:                { type: 'url',     value: '', optional: true },
   form_usage_entry_device:       { type: 'string',  value: '', optional: true },

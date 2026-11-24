@@ -35,6 +35,9 @@ export const VIEWS = [
   { id: 'melden',      title: 'Problem melden',   menu: false, load: () => import('./report.js') },
   { id: 'verwalten',   title: 'Spieler verwalten', menu: false, load: () => import('./manage.js') },
   { id: 'fotos',       title: 'Fotos',                          load: () => import('./photos.js') },   // Phase 18b
+  { id: 'turnier',     title: 'Turnier',          menu: false, load: () => import('./tournament.js') },   // Phase 18
+  { id: 'turnierspiel', title: 'Turnierspiel',    menu: false, load: () => import('./tournament-match.js') },
+  { id: 'turniere',    title: 'Turniere',                       load: () => import('./tournaments.js') },
   { id: 'entdecken',   title: 'Entdecken',                    load: () => import('./entdecken.js') },
   { id: 'more',        title: 'Entdecken',        menu: false, load: () => import('./entdecken.js') },   // old links
 ];

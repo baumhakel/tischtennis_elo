@@ -4,6 +4,7 @@
 //
 //   result(winners, losers) → 'sent' | 'offline' | 'unavailable'     then app/after-entry.js checks arrival
 //   recentResult(winners, losers) → ms of the same result sent from this device within duplicate_window_minutes, or null
+//   tournament(id, match, sets) → 'sent' | 'offline' | 'unavailable'   Phase 18: checked by after-entry.tournamentSent
 //   support(answers)        → 'sent' | 'offline' | 'unavailable'     („Gesendet“: the app can't read the Support tab)
 //   managementUrl(action, fields) → the Verwaltung form, pre-filled (null if not set up)
 //   managementOpened(action, fields)  the link was tapped: check the log on return
@@ -13,7 +14,7 @@
 import { clean } from '../core/normalize.js';
 import { doneText } from '../core/manage.js';
 import { formBody, prefilledUrl, sendForm } from '../io/forms.js';
-import { FORMS, formReady, entriesFor, resultAnswers, managementAnswers, managementPages, resultKey, recentSame } from './forms.js';
+import { FORMS, formReady, entriesFor, resultAnswers, tournamentAnswers, managementAnswers, managementPages, resultKey, recentSame } from './forms.js';
 
 const SENT_KEY = 'tt-elo-sent';
 /** usage counting (app/usage.js listens for this event in main.js) */
@@ -61,6 +62,22 @@ export function createSubmit({ store, afterEntry, transport, storage = null, clo
       const now = clock();
       writeLog([...readLog().filter(x => now - x.at < KEEP_MS), { key: resultKey(winners, losers), at: now }].slice(-50));
       count('eintragen-ergebnis');
+      afterEntry.sent();
+      return 'sent';
+    },
+
+    async tournament(id, match, sets) {
+      const c = cfg();
+      if (!formReady(c, 'tournament', ['tournament', 'match', 'set1', 'set2'])) return 'unavailable';
+      afterEntry.tournamentSending({ tournament: id, nr: match.nr });
+      try {
+        await transport.send('tournament', c, tournamentAnswers(id, match, sets));
+      } catch {
+        afterEntry.failed();
+        offline();
+        return 'offline';
+      }
+      count('eintragen-turnier');
       afterEntry.sent();
       return 'sent';
     },

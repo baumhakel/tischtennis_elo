@@ -17,6 +17,14 @@ const CAPTION_MAX = 80;
 export function photoTitle(ctx, p) {
   const ds = ctx.baseModel.dataset, name = id => ctx.names.get(id) ?? ds.players.get(id)?.name ?? id;
   if (p.kind === 'spieler') return `Profilbild von ${name(p.ref)}`;
+  if (p.kind === 'turnier' || p.kind === 'turnier_spiel') {   // Phase 18: ref = tournament id, or `id#nr`
+    const [id, nr] = p.ref.split('#');
+    const T = ds.tournaments?.find(t => t.id === id);
+    const m = nr && T?.ok ? T.matches.find(x => x.nr === Number(nr)) : null;
+    const side = s => (s?.id ? name(s.id) : s?.name || '?');
+    if (m) return `${T.name}, Spiel ${m.nr}: ${side(m.a)} gegen ${side(m.b)}`;
+    return T ? `${T.name}${T.date != null ? ` · ${fmt.date(T.date)}` : ''}` : 'Turnier';
+  }
   if (p.kind === 'spiel') {
     const g = findGame(ds, p.ref);
     if (g >= 0) { const x = ds.games[g]; return `${resultSentence(x.winners, x.losers, name)} · ${fmt.date(x.t)}`; }
@@ -44,6 +52,17 @@ export function showPhotos(ctx, list, index = 0) {
       }
       if (p.kind === 'spieler' && !(ctx.state.view === 'player' && ctx.params.id === p.ref)) {
         out.push({ label: 'Zum Profil', onclick: () => { close(); ctx.navigate('player', { id: p.ref }); } });
+      }
+      if ((p.kind === 'turnier' || p.kind === 'turnier_spiel') && !['turnier', 'turnierspiel'].includes(ctx.state.view)) {
+        const [id, nr] = p.ref.split('#');
+        out.push({ label: nr ? 'Zum Turnierspiel' : 'Zum Turnier', onclick: () => { close(); ctx.navigate(nr ? 'turnierspiel' : 'turnier', nr ? { id, nr } : { id }); } });
+      }
+      if (p.kind === 'turnier' && ctx.photos.canSetWinner && ctx.tournaments?.list.find(t => t.id === p.ref)?.winnerPhoto !== p.id) {
+        out.push({ label: 'Als Siegerfoto', onclick: async e => {
+          const b = e.currentTarget; b.disabled = true; b.textContent = 'Wird gesetzt …';
+          try { await ctx.actions.setWinnerPhoto(p.id, p.ref); close(); ctx.actions.notify('Siegerfoto gesetzt.'); }
+          catch (err) { b.disabled = false; b.textContent = 'Als Siegerfoto'; ctx.actions.notify(err?.message || 'Das hat nicht geklappt.'); }
+        } });
       }
       out.push({ label: 'Teilen', onclick: () => sharePhoto(ctx, p) });
       if (ctx.photos.canDelete(p)) {

@@ -24,6 +24,22 @@ export function arrivedGames(before, games) {
 }
 
 /**
+ * Did a tournament result arrive? request = { tournament, nr }, before = Set of 'row' numbers of result rows known
+ * when it was sent. → { ok, text } or null (nothing new yet). A new row that is not valid → the reason.
+ */
+export function tournamentOutcome(request, ds, before) {
+  const T = ds?.tournaments?.find(t => t.id === request.tournament);
+  const fresh = (T?.entries || []).filter(e => e.nr === request.nr && !before.has(e.row)).at(-1);
+  if (!fresh) return null;
+  const m = T.matches?.find(x => x.nr === request.nr);
+  if (m?.result?.row === fresh.row) return { ok: true, text: `Spiel ${request.nr} ist eingetragen.`, tournament: T.id, nr: request.nr };
+  const issue = T.issues.find(i => i.row === fresh.row);
+  return { ok: false, text: `Angekommen, aber nicht gewertet: ${issue ? issue.text.replace(/^Spiel \d+: /, '') : 'unbekannter Grund'}` };
+}
+
+const tournamentRows = ds => new Set((ds?.tournaments || []).flatMap(t => (t.entries || []).map(e => e.row)));
+
+/**
  * What a Verwaltung action did, from the log rows written since it was sent: { ok, text } or null (nothing yet).
  * request = { action, done } (done = the text for success, core/manage.js doneText).
  */
@@ -42,7 +58,8 @@ export function createAfterEntry({ store, refresh, hasToken, clock = Date.now, l
   function capture(request = null) {
     const ds = store.get().data.model?.dataset;
     if (!ds) return false;
-    pending = { at: clock(), before: new Set(ds.games.map(g => g.ref)), logLen: (ds.log || []).length, request };
+    pending = { at: clock(), before: new Set(ds.games.map(g => g.ref)), logLen: (ds.log || []).length, request,
+      tourRows: request?.tournament ? tournamentRows(ds) : null };
     return true;
   }
 
@@ -61,6 +78,12 @@ export function createAfterEntry({ store, refresh, hasToken, clock = Date.now, l
   function check(final = true) {
     if (!pending) { store.set({ notice: null }); return false; }
     const ds = store.get().data.model?.dataset;
+    if (pending.request?.tournament) {
+      const out = tournamentOutcome(pending.request, ds, pending.tourRows);
+      if (out) { finish({ kind: out.ok ? 'done' : 'refused', text: out.text }); return true; }
+      if (final) store.set({ notice: { kind: 'missing', text: 'Das Turnierergebnis ist noch nicht angekommen.' } });
+      return false;
+    }
     if (pending.request) {
       const out = ds ? manageOutcome(pending.request, (ds.log || []).slice(pending.logLen)) : null;
       if (out) { finish({ kind: out.ok ? 'done' : 'refused', text: out.text }); return true; }
@@ -105,6 +128,8 @@ export function createAfterEntry({ store, refresh, hasToken, clock = Date.now, l
     },
     /** The app is about to send a result itself (call before sending: the games known now are the „before“). */
     sending() { return capture(); },
+    /** The app is about to send a tournament result ({ tournament, nr }). */
+    tournamentSending(request) { return capture(request); },
     /** The result was sent: check the sheet shortly. */
     sent() { if (pending) watchSent('Gesendet · wird geprüft …'); },
     /** Sending failed: forget it. */

@@ -16,6 +16,12 @@ export const FORMS = {
     url: 'form_support_url',
     entries: { topic: 'form_support_entry_topic', description: 'form_support_entry_description', game: 'form_support_entry_game', name: 'form_support_entry_name' },
   },
+  tournament: {   // Phase 18: Turnierergebnis (written by setupTurnier in Turnier.gs)
+    url: 'form_tournament_url',
+    entries: { tournament: 'form_tournament_entry_tournament', match: 'form_tournament_entry_match', pairing: 'form_tournament_entry_pairing',
+      set1: 'form_tournament_entry_set1', set2: 'form_tournament_entry_set2', set3: 'form_tournament_entry_set3', set4: 'form_tournament_entry_set4',
+      set5: 'form_tournament_entry_set5', set6: 'form_tournament_entry_set6', set7: 'form_tournament_entry_set7' },
+  },
   management: {
     url: 'form_management_url',
     entries: {
@@ -59,6 +65,13 @@ export function entriesFor(cfg, form, answers) {
 /** Winners and losers (player IDs) → the Ergebnis form's answers, by display name (= the form's choices). */
 export function resultAnswers(winners, losers, nameOf) {
   return { winner1: nameOf(winners[0]), winner2: winners[1] ? nameOf(winners[1]) : '', loser1: nameOf(losers[0]), loser2: losers[1] ? nameOf(losers[1]) : '' };
+}
+
+/** A tournament match result → the Turnierergebnis answers. sets = [[a, b] …] from the first-named side's view. */
+export function tournamentAnswers(tournamentId, match, sets) {
+  const out = { tournament: tournamentId, match: String(match.nr), pairing: `${match.a.name} gegen ${match.b.name}` };
+  sets.forEach((s, i) => { out[`set${i + 1}`] = `${s[0]}:${s[1]}`; });
+  return out;
 }
 
 /** The Verwaltung answers for one action: the „Aktion“ choice plus the questions of its section. */

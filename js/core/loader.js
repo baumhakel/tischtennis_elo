@@ -15,12 +15,13 @@ import {
   clean, norm, toBool, toNumber, parseTime, hasTimeOfDay, roundSerial, formatRef, serialToParts, readTable, cell, fnv1a,
 } from './normalize.js';
 import { parsePhotos } from './photos.js';
+import { parseTournamentTabs, buildTournament, tournamentGames, seedRatings } from './tournament.js';
 
 /** @typedef {import('../types.js').RawSheets} RawSheets */
 /** @typedef {import('../types.js').Dataset} Dataset */
 /** @typedef {import('../types.js').Issue} Issue */
 
-const SOURCE_ORDER = { legacy: 0, spiele: 1 };
+const SOURCE_ORDER = { legacy: 0, spiele: 1, turnier: 2 };
 const MAX_REFS_IN_ISSUE = 5;
 
 /**
@@ -63,8 +64,12 @@ export function load(raw) {
     rows = [...legacy.rows, ...kept];
   }
 
+  // tournaments (Phase 18): read first, so corrections can void a tournament result by its Zeitstempel
+  const tour = parseTournamentTabs(raw, idByName, report);
+  for (const r of tour.results) r.tournamentResult = true;
+
   // 4. corrections
-  applyCorrections(raw.corrections, rows, report, counts, idByName);
+  applyCorrections(raw.corrections, rows, report, counts, idByName, tour.results);
 
   // 5. map names → IDs, validate
   const unknown = new Map();   // norm(name) → { name, count, refs[] }
@@ -81,8 +86,30 @@ export function load(raw) {
       { name: u.name, count: u.count, ref: u.refs.join(', ') });
   }
 
-  // 6. sort, index, hash
-  games.sort((a, b) => a.t - b.t || SOURCE_ORDER[a.source] - SOURCE_ORDER[b.source] || a.row - b.row);
+  // tournaments: draw with the Elo-Werte at setzstichtag, then member-vs-member matches become games
+  const order = (a, b) => a.t - b.t || SOURCE_ORDER[a.source] - SOURCE_ORDER[b.source] || a.row - b.row;
+  games.sort(order);
+  const results = tour.results.filter(r => !r.voided);
+  const tournaments = [];
+  for (const T of tour.list.slice().sort((a, b) => (a.date ?? Infinity) - (b.date ?? Infinity))) {
+    if (T.status === 'entwurf') continue;
+    const ratings = seedRatings(games, config, T.seedAt);
+    const state = buildTournament(T, results, { ratings, startRating: config.start_rating });
+    for (const i of state.issues) {
+      report('warning', 'tournament_result', `Turnier „${T.name}“, Tab „turnier_ergebnisse“: ${i.text}`, { tab: TABS.turnier_ergebnisse, row: i.row });
+    }
+    if (!state.ok && state.problem) report('info', 'tournament', `Turnier „${T.name}“: ${state.problem}`, { tab: TABS.turniere, row: T.row });
+    for (const tg of tournamentGames(state)) {
+      games.push({ g: -1, t: tg.t, ref: tg.ref, source: 'turnier', row: tg.row, winners: tg.winners, losers: tg.losers,
+        double: false, approxTime: false, tournament: tg.tournament });
+      counts.tournamentGames = (counts.tournamentGames || 0) + 1;
+    }
+    games.sort(order);
+    tournaments.push(state);
+  }
+
+  // 6. index, hash
+  games.sort(order);
   games.forEach((g, i) => { g.g = i; });
   counts.games = games.length;
   flagDuplicates(games, config.duplicate_window_minutes, report);
@@ -91,7 +118,10 @@ export function load(raw) {
   const photos = parsePhotos(raw.fotos, players);   // Phase 18b
   // every name ever used (aliases + display names, normalised): a new name must not be one of them (core/manage.js)
   const takenNames = [...idByName.keys()];
-  return { config, players, games, issues, counts, takenNames, log, photos, hash: datasetHash(config, players, games, log, photos) };
+  const tourHash = fnv1a(JSON.stringify([tour.list.map(t => [t.id, t.status, t.name, t.winnerPhoto, t.participants.map(p => p.key + (p.seed || '') + (p.pin ?? ''))]),
+    results.map(r => [r.row, r.t, r.tournament, r.nr, r.sets])]));
+  return { config, players, games, issues, counts, takenNames, log, photos, tournaments,
+    hash: datasetHash(config, players, games, log, photos, tourHash) };
 }
 
 // ───────── management_log (Phase 18a) ─────────
@@ -340,7 +370,7 @@ function parseGameRows(source, grid, report, counts) {
 
 // ───────── 4. corrections ─────────
 
-function applyCorrections(grid, rows, report, counts, idByName) {
+function applyCorrections(grid, rows, report, counts, idByName, tournamentResults = []) {
   if (!grid || !grid.length) return;
   const tab = TABS.corrections;
   const t = readTable(grid, COLUMNS.corrections, OPTIONAL_COLUMNS.corrections || []);
@@ -350,7 +380,7 @@ function applyCorrections(grid, rows, report, counts, idByName) {
     return;
   }
   const byRef = new Map();
-  for (const r of rows) {
+  for (const r of [...rows, ...tournamentResults]) {
     if (!byRef.has(r.ref)) byRef.set(r.ref, []);
     byRef.get(r.ref).push(r);
   }
@@ -379,6 +409,16 @@ function applyCorrections(grid, rows, report, counts, idByName) {
       report('warning', 'ambiguous_correction',
         `Tab „${tab}“, Zeile ${row}: ${hits.length} Spiele haben den Zeitstempel ${ref}. Die Korrektur gilt für alle.`,
         { tab, row, ref, count: hits.length });
+    }
+    const tourHits = hits.filter(r => r.tournamentResult);
+    if (tourHits.length) {
+      if (action === 'void') {
+        for (const r of tourHits) if (!r.voided) { r.voided = true; counts.voided++; }
+      } else report('warning', 'bad_correction',
+        `Tab „${tab}“, Zeile ${row}: ${ref} ist ein Turnierergebnis. Dafür geht nur „void“; ein falsches Ergebnis wird in der App einfach neu eingetragen.`,
+        { tab, row, ref });
+      if (tourHits.length === hits.length) continue;
+      hits.splice(0, hits.length, ...hits.filter(r => !r.tournamentResult));
     }
     if (action === 'move') {
       const prev = moves.get(ref);
@@ -519,9 +559,10 @@ export function flagDuplicates(games, minutes, report) {
 
 // ───────── 6. hash ─────────
 
-function datasetHash(config, players, games, log = [], photos = null) {
+function datasetHash(config, players, games, log = [], photos = null, tournaments = '') {
   const last = log.at(-1);
   const parts = [
+    `turniere:${tournaments}`,
     `fotos:${photos?.rev || ''}`,
     `log:${log.length}:${last ? `${last.row}:${last.status}` : ''}`,
     JSON.stringify(Object.keys(config).sort().map(k => [k, config[k]])),

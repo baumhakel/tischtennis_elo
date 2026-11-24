@@ -89,7 +89,7 @@ function chips(ctx, f) {
   if (f.von && f.bis) add(f.von === f.bis ? `am ${day(f.von)}` : `${day(f.von)} bis ${day(f.bis)}`, { von: null, bis: null });
   else if (f.von) add(`ab ${day(f.von)}`, { von: null });
   else if (f.bis) add(`bis ${day(f.bis)}`, { bis: null });
-  if (f.quelle) add(f.quelle === 'altdaten' ? 'nur Altdaten' : 'nur Formulareinträge', { quelle: null });
+  if (f.quelle) add({ altdaten: 'nur Altdaten', formular: 'nur Formulareinträge', turnier: 'nur Turnierspiele' }[f.quelle], { quelle: null });
   if (f.korrigiert) add('nur korrigierte Spiele', { korrigiert: null });
   if (f.chance) add(`Siegchance ${fmt.pct(f.chance[0])} bis ${fmt.pct(f.chance[1])}`, { chance: null });
   if (f.letzte) add(`die letzten ${f.letzte}`, { letzte: null });

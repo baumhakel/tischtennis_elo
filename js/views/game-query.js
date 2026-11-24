@@ -9,7 +9,7 @@
 //   art       'einzel' | 'doppel'
 //   von, bis  time (yyyy-mm-dd hh:mm:ss) or date (yyyy-mm-dd), inclusive, compared with the time the game
 //             was played (timeRef: differs from game_ref for a moved game)
-//   quelle    'altdaten' | 'formular'           korrigiert  '1' = only corrected games (swapped result, moved or a player replaced)
+//   quelle    'altdaten' | 'formular' | 'turnier'           korrigiert  '1' = only corrected games (swapped result, moved or a player replaced)
 //   chance    'lo-hi' (0…1): pre-game win chance in [lo, hi) (hi = 1 inclusive) — of the player's
 //             side when spieler is set, otherwise of either side
 //   letzte    N: only the last N games that pass the other filters
@@ -74,7 +74,7 @@ export function parseFilter(params, model) {
   const day = v => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/.test(v) ? v : null);
   f.von = day(params.von);
   f.bis = day(params.bis);
-  f.quelle = ['altdaten', 'formular'].includes(params.quelle) ? params.quelle : null;
+  f.quelle = ['altdaten', 'formular', 'turnier'].includes(params.quelle) ? params.quelle : null;
   f.korrigiert = params.korrigiert === '1' ? '1' : null;
   const m = /^(\d*\.?\d+)-(\d*\.?\d+)$/.exec(params.chance || '');
   f.chance = m && Number(m[1]) < Number(m[2]) && Number(m[1]) >= 0 && Number(m[2]) <= 1 ? [Number(m[1]), Number(m[2])] : null;
@@ -123,7 +123,7 @@ export function queryGames(model, f) {
     }
     if (f.von && !after(timeRef(x), f.von)) continue;
     if (f.bis && !before(timeRef(x), f.bis)) continue;
-    if (f.quelle && (f.quelle === 'altdaten') !== (x.source === 'legacy')) continue;
+    if (f.quelle && f.quelle !== { legacy: 'altdaten', spiele: 'formular', turnier: 'turnier' }[x.source]) continue;
     if (f.korrigiert && !x.corrected && !x.moved && !x.replaced) continue;
     if (f.chance) {
       const [lo, hi] = f.chance;

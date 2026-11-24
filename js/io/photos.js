@@ -3,7 +3,7 @@
 //
 //   photoClient({ url: () => string, token: () => string|null, fetchImpl? })
 //     → { upload({ kind, ref, image: Blob, thumb: Blob, width, height, caption }) → id,
-//         get(ids, 'thumb'|'full') → Map id → Blob, remove(id) }
+//         get(ids, 'thumb'|'full') → Map id → Blob, remove(id), setWinner(id, tournament) }
 //   Errors: PhotoError with kind 'offline' | 'auth' | 'forbidden' | 'limit' | 'too_large' | 'not_found' | 'setup' | 'error'
 //   and a German message.
 
@@ -70,5 +70,7 @@ export function photoClient({ url, token, fetchImpl = (...a) => fetch(...a), tim
       return out;
     },
     async remove(id) { await call({ action: 'delete', id }); },
+    /** Phase 18: management marks a tournament photo as the winner photo (Fotos.gs writes turniere.siegerfoto). */
+    async setWinner(id, tournament) { await call({ action: 'winner', id, tournament }); },
   };
 }

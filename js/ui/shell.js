@@ -16,6 +16,9 @@ import { windowRange } from '../core/window.js';
 import { viewById } from '../views/index.js';
 import { formatHash } from '../app/url.js';
 import { formReady, canManage } from '../app/forms.js';
+import { visibleTournaments } from '../app/tournaments.js';
+
+const TURNIER_TEST = typeof location !== 'undefined' && new URLSearchParams(location.search).has('turniertest');
 
 const X_LABELS = { date: 'Datum', game: 'Spielnummer', own: 'Eigene Spiele' };
 const TABS = [
@@ -24,7 +27,11 @@ const TABS = [
   { id: 'player', label: 'Profil' },
   { id: 'entdecken', label: 'Entdecken' },
 ];
-const tabOf = view => (['dashboard', 'tisch', 'player'].includes(view) ? view : 'entdecken');
+// Phase 18: a fifth tab „Turnier“ while a tournament is going on (app/tournaments.js)
+const TOURNAMENT_VIEWS = ['turnier', 'turnierspiel'];
+let tournamentTab = false;
+const tabOf = view => (['dashboard', 'tisch', 'player'].includes(view) ? view
+  : tournamentTab && TOURNAMENT_VIEWS.includes(view) ? 'turnier' : 'entdecken');
 
 /**
  * @param {HTMLElement} root
@@ -59,7 +66,7 @@ export function createShell(root, { store, actions }) {
   const lens = h('div', { class: 'lens', hidden: true }, modeSeg, chips);
 
   // ── bottom bar ──
-  const tabs = TABS.map(t => h('a', { href: `#/${t.id}`, dataset: { tab: t.id }, onclick: e => {
+  const tabs = [...TABS.slice(0, 3), { id: 'turnier', label: 'Turnier' }, TABS[3]].map(t => h('a', { href: `#/${t.id}`, dataset: { tab: t.id }, onclick: e => {
     e.preventDefault();
     if (tabOf(store.get().view) === t.id && (t.id !== 'player' || !meId || store.get().params.id === meId)) {
       window.scrollTo({ top: 0, behavior: 'smooth' });   // tapping the active tab scrolls to the top
@@ -214,6 +221,8 @@ export function createShell(root, { store, actions }) {
     renderMenu(s, me, f, issues, nErr, online);
 
     // bottom bar
+    tournamentTab = !!(model && visibleTournaments(model.dataset, TURNIER_TEST).active);
+    for (const a of tabs) if (a.dataset.tab === 'turnier') a.hidden = !tournamentTab;
     const current = tabOf(s.view);
     for (const a of tabs) {
       if (a.dataset.tab === current) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');

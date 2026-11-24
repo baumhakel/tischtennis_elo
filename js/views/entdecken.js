@@ -25,6 +25,7 @@ const GROUPS = [
     ['activity', 'Aktivität', 'Wer wann wie viel spielt'],
     ['movement', 'Elo-Bewegung', 'Wie unruhig die Liga gerade ist'],
     ['fotos', 'Fotos', 'Fotos von Spielen und Profilbilder'],
+    ['turniere', 'Turniere', 'Gruppen, K.-o.-Runde und Sieger'],
   ] },
   { title: 'Duelle & Teams', items: [
     ['h2h', 'Direktvergleich', 'Zwei Spieler oder zwei Teams im Vergleich'],
@@ -50,6 +51,7 @@ export default {
         h('ul', { class: 'hub' }, g.items
           .filter(([id]) => !(c.mode === 'einzel' && id === 'partners'))   // no doubles in the singles league
           .filter(([id]) => id !== 'labor' || labAvailable(c.model, c.visible.shown.length))   // only with something to show
+          .filter(([id]) => id !== 'turniere' || c.tournaments?.list.length)
           .filter(([id]) => id !== 'fotos' || (c.photos?.on && (c.photos.all('spiel').length || c.baseModel.dataset.photos?.count)))
           .map(([id, title, desc]) => h('li', {}, h('a', { class: 'hub-card tap', ...linkTo(c, id) },
             h('span', { class: 'hub-title' }, title), h('span', { class: 'hub-desc' }, desc))))))));

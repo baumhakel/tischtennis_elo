@@ -867,3 +867,56 @@ body.viewer-open { overflow: hidden; }
 .viewer-actions .btn { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 16px; border-radius: 8px;
   border: 1.5px solid rgba(255, 255, 255, 0.5); background: transparent; color: #fff; text-decoration: none; font-size: 15px; }
 .viewer-actions .btn.danger { border-color: #F0806F; color: #F0806F; }
+
+/* ── Turnier (Phase 18) ── */
+.tabs a[hidden] { display: none; }
+.tt-side { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.tt-side > span:not(.tt-guest) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tt-open { color: var(--muted); font-style: italic; white-space: normal; }
+.tt-guest { font-size: 11px; line-height: 1; padding: 3px 5px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); }
+.tt-matches { list-style: none; margin: 0 0 var(--s3); padding: 0; border-top: 1px solid var(--line); }
+.tt-matches li { border-bottom: 1px solid var(--line); }
+.tt-match { display: grid; gap: 4px; padding: 10px 28px 10px 0; }
+.tt-line { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); }
+.tt-line.won { font-weight: 600; }
+.tt-sets { font: 600 16px var(--score); font-variant-numeric: tabular-nums; }
+.tt-meta { font-size: 13px; color: var(--muted); }
+.tt-meta.tt-now { color: var(--up); font-weight: 600; }
+.tt-group { margin: var(--s3) 0 var(--s2); }
+.tt-group h4 { margin: 0 0 var(--s1); font-size: 15px; }
+.tt-table td:nth-child(2) { max-width: 0; width: 45%; }
+.tt-table tr.tt-goes td:first-child { box-shadow: inset 3px 0 0 var(--up); }
+.tt-table tr.tt-out { color: var(--muted); }
+.tt-mark { font-size: 12px; color: var(--up); font-weight: 600; }
+@media (max-width: 380px) { .tt-table .tt-pts { display: none; } }
+.tt-details { margin: 0 0 var(--s4); }
+.tt-details summary { cursor: pointer; padding: 10px 0; color: var(--table); min-height: 44px; }
+@media (prefers-color-scheme: dark) { .tt-details summary { color: var(--up); } }
+.tt-bracket { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(230px, 1fr); gap: var(--s4); overflow-x: auto;
+  scroll-snap-type: x mandatory; padding-bottom: var(--s2); }
+.tt-round { scroll-snap-align: start; display: flex; flex-direction: column; }
+.tt-round h4 { margin: 0 0 var(--s1); font-size: 14px; color: var(--muted); font-weight: 500; }
+.tt-round .tt-matches { flex: 0 0 auto; }
+.tt-podium { margin: var(--s2) 0 var(--s4); }
+.tt-places { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--s2); }
+.tt-place { display: flex; align-items: center; gap: var(--s2); }
+.tt-place-1 { font-size: 20px; }
+.tt-rank { font: 600 18px var(--score); width: 1.6em; color: var(--muted); }
+.tt-place-1 .tt-rank { color: var(--up); font-size: 24px; }
+.tt-winner-photo { margin: var(--s2) 0 var(--s3); }
+.tt-versus { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--s3); margin: var(--s3) 0; }
+.tt-vs-side { display: flex; justify-content: center; text-align: center; }
+.tt-vs-side .tt-side { flex-direction: column; }
+.tt-vs-side.won { font-size: 17px; }
+.tt-vs-mid { font: 600 28px var(--score); font-variant-numeric: tabular-nums; color: var(--muted); }
+.tt-setline { font-variant-numeric: tabular-nums; }
+.tt-entry { margin: var(--s4) 0; }
+.tt-sets-table { max-width: 360px; }
+.tt-sets-table th:not(:first-child) { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tt-sets-table tr.bad input { border-color: var(--down); }
+.tt-pt { width: 3.4em; font: 600 18px var(--score); text-align: center; padding: 8px 4px; min-height: 44px;
+  border: 1.5px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
+.tt-check { min-height: 1.5em; }
+.tt-check.ok { color: var(--up); font-weight: 600; }
+.tt-check.bad { color: var(--down); }
+.tt-vs-word { font: 500 16px var(--text); }

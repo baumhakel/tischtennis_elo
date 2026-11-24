@@ -96,6 +96,8 @@ function page(ctx) {
     h('dl', { class: 'facts small' },
       h('dt', {}, 'Quelle'), h('dd', {}, x.source === 'legacy'
         ? `Altdaten${x.sourceRow != null ? `, Zeile ${x.sourceRow} der Excel-Liste` : ''}; die Uhrzeit ist geschätzt`
+        : x.source === 'turnier' ? h('span', {}, h('a', { class: 'inline-link', ...linkTo(ctx, 'turnierspiel', { id: x.tournament.id, nr: x.tournament.nr }) },
+          `${ctx.model.dataset.tournaments?.find(t => t.id === x.tournament.id)?.name || 'Turnier'}, Spiel ${x.tournament.nr}`), `, Zeile ${x.row} im Tab „turnier_ergebnisse“`)
         : `Formulareintrag, Zeile ${x.row}`),
       x.corrected ? [h('dt', {}, 'Korrektur'), h('dd', {}, 'Ergebnis nachträglich getauscht')] : null,
       x.moved ? [h('dt', {}, 'Nachgetragen'), h('dd', {}, enteredText(x))] : null,

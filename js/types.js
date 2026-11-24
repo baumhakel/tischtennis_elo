@@ -43,7 +43,7 @@
  * @property {number} t            sheet serial (days since 1899-12-30, sheet-local wall-clock); played_at for a moved game
  * @property {string} ref          "yyyy-mm-dd hh:mm:ss" of the row's own timestamp (submission), matches corrections.game_ref;
  *                                 stays the same when the game is moved
- * @property {'legacy'|'spiele'} source
+ * @property {'legacy'|'spiele'|'turnier'} source   'turnier': a tournament match between two members (Phase 18), with .tournament = { id, nr }
  * @property {number} row          sheet row number in its source tab (header = row 1)
  * @property {string[]} winners    player IDs, length 1 (singles) or 2 (doubles)
  * @property {string[]} losers     player IDs, same length as winners

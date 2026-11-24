@@ -8,6 +8,7 @@
 // state.photosRev is bumped and the views re-render. A photo never changes, so nothing is ever re-fetched.
 import { photoKey } from '../io/photo-cache.js';
 import { photosFor, avatarOf, canDelete, canSetAvatar, refKey } from '../core/photos.js';
+import { canManage } from './forms.js';
 import { norm } from '../core/normalize.js';
 
 const FACES_KEY = 'tt-elo-faces';
@@ -128,6 +129,8 @@ export function createPhotos({ store, client, cache, refresh, storage = null, no
       canDelete: p => !!client && canDelete(p, email, cfg),
       canSetAvatar: id => !!client && canSetAvatar(dataset, id, email),
       canUpload: !!client && on,
+      /** Phase 18: may this account choose the winner photo (management_accounts)? */
+      canSetWinner: !!client && on && canManage(cfg, email),
     };
   }
 
@@ -157,6 +160,12 @@ export function createPhotos({ store, client, cache, refresh, storage = null, no
       bump();
       refresh();
       return id;
+    },
+    /** Phase 18: mark a tournament photo as the winner photo (management only, checked again by Fotos.gs). */
+    async setWinner(id, tournament) {
+      if (!client) return;
+      await client.setWinner(id, tournament);
+      refresh();
     },
     async remove(id) {
       if (!client) return;

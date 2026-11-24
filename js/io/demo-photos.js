@@ -73,6 +73,7 @@ export function demoPhotoClient(demo, dataset) {
   return {
     async upload(o) { return demo.addPhoto(o); },
     async remove(id) { demo.removePhoto(id); },
+    async setWinner(id, tournament) { demo.setWinnerPhoto(id, tournament); },
     async get(ids, size = 'thumb') {
       const out = new Map(), ds = dataset();
       for (const id of ids) {

@@ -27,9 +27,12 @@ import { loadMe, saveMe, resolveMe } from './app/me.js';
 import { scheduleAchievements, peekAchievements } from './app/achievements.js';
 import { scheduleForecast, peekForecast } from './app/forecast.js';
 import { scheduleLab } from './app/lab.js';
+import { visibleTournaments } from './app/tournaments.js';
 
 const demoParam = new URLSearchParams(location.search).get('demo');
 const demo = demoParam !== null;
+// Phase 18: a tournament with status „test“ is only shown with ?turniertest (trying the day out beforehand)
+const turnierTest = new URLSearchParams(location.search).has('turniertest');
 const now = () => nowSerial(SHEET_TIMEZONE);
 
 // ── dependencies (demo mode swaps Google and the cache for stand-ins) ──
@@ -91,6 +94,7 @@ const actions = {
   sendResult: (winners, losers) => submit.result(winners, losers),
   recentResult: (winners, losers) => submit.recentResult(winners, losers),
   sendSupport: answers => submit.support(answers),
+  sendTournament: (id, match, sets) => submit.tournament(id, match, sets),   // Phase 18
   managementUrl: (action, fields) => submit.managementUrl(action, fields),
   managementOpened: (action, fields) => submit.managementOpened(action, fields),
   managementDemo: (action, fields) => submit.managementDemo(action, fields),
@@ -102,6 +106,7 @@ const actions = {
     setTimeout(() => { if (store.get().notice === notice) store.set({ notice: null }); }, 6000);
   },
   removePhoto: id => photos.remove(id),
+  setWinnerPhoto: (id, tournament) => photos.setWinner(id, tournament),   // Phase 18
   setFaces: on => photos.setFaces(on),
   facesOn: () => photos.faces(),
   noticeRetry: () => afterEntry.retry(),
@@ -143,6 +148,7 @@ const router = createRouter({
       window: range ? { ...range, empty: model.dataset.games.length === 0 } : null,
       visible: vis, me, fresh: new Set(state.fresh || []),
       photos: photos.view(base.dataset, state),             // Phase 18b: photos and faces (app/photos.js)
+      tournaments: visibleTournaments(base.dataset, turnierTest),   // Phase 18: { list, active }
       focus: resolveFocus(filters, model.elo, vis, model.dataset.config, me.id),
       navigate: actions.navigate, setParams: actions.setParams, setFilters: actions.setFilters, actions,
     };

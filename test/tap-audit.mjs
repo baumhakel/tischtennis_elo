@@ -15,7 +15,7 @@ import { demoRaw } from '../js/io/demo.js';
 
 const quick = process.argv.includes('--quick');
 const outMd = process.argv.slice(2).find(a => !a.startsWith('--')) || join(tmpdir(), 'tap-audit.md');
-const SIZES = quick ? ['demo'] : ['demo', 'demo=gross'];
+const SIZES = quick ? ['demo'] : ['demo', 'demo=gross', 'demo=turnier'];   // Phase 18: a tournament going on
 const MODES = quick ? [null] : [null, 'einzel', 'doppel'];
 const MES = quick ? ['ich'] : ['ich', 'zuschauer'];
 const IDS = new Set(VIEWS.map(v => v.id));

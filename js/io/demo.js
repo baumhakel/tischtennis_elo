@@ -4,6 +4,7 @@
 import { CONFIG_DEFAULTS } from '../config.js';
 import { nowSerial, formatRef, roundSerial, norm } from '../core/normalize.js';
 import { checkManage, applyManage } from '../core/manage.js';
+import { load } from '../core/loader.js';
 
 const ALL_NAMES = ['Anna', 'Bernd', 'Clara', 'David', 'Elif', 'Felix', 'Greta', 'Hannes', 'Ida', 'Jonas', 'Kira', 'Lukas', 'Mira', 'Noah', 'Olga'];
 
@@ -11,6 +12,8 @@ const ALL_NAMES = ['Anna', 'Bernd', 'Clara', 'David', 'Elif', 'Felix', 'Greta', 
  * Deterministic fake RawSheets, legacy + Spiele.
  * size 'klein' (default): 12 players, ~370 games over 16 weeks.
  * size 'gross': 15 players, ~2000 games over two years (the real league's size, for performance checks).
+ * size 'turnier': like 'klein', plus a tournament going on today (about a third played), for trying Phase 18.
+ * Every size has a finished tournament a month ago (Phase 18).
  */
 export function demoRaw(timeZone, size = 'klein') {
   const big = size === 'gross';
@@ -63,7 +66,7 @@ export function demoRaw(timeZone, size = 'klein') {
     [ref(lateT), 'move', 'Demo: nachgetragen', ref(playedT), '', ''],
     [ref(wrong[0]), 'replace', 'Demo: falscher Gegner', '', wrong[3], right]];
 
-  const demoValue = { responses_valid_from: cutoff, form_result_url: DEMO_FORM, form_support_url: DEMO_FORM, form_management_url: DEMO_FORM,
+  const demoValue = { responses_valid_from: cutoff, form_result_url: DEMO_FORM, form_support_url: DEMO_FORM, form_management_url: DEMO_FORM, form_tournament_url: DEMO_FORM,
     management_accounts: DEMO_EMAIL, photos_url: 'https://example.org/demo-fotos', ...DEMO_IDS };
   const config = [['key', 'value', 'note'], ...Object.entries(CONFIG_DEFAULTS)
     .map(([k, d]) => [k, k in demoValue ? demoValue[k] : d.value, 'Demo'])];
@@ -77,14 +80,78 @@ export function demoRaw(timeZone, size = 'klein') {
   // demo account can add one), and photos of a few recent games
   const fotos = [['id', 'kind', 'ref', 'file_id', 'thumb_id', 'width', 'height', 'caption', 'uploaded_by', 'uploaded_at', 'deleted_at', 'deleted_by']];
   let n = 0;
-  const foto = (kind, ref, w, h, caption, at) => { n++; const id = `f${String(n).padStart(4, '0')}`; fotos.push([id, kind, ref, 'demo', 'demo', w, h, caption, DEMO_EMAIL, at, '', '']); };
+  const foto = (kind, ref, w, h, caption, at) => { n++; const id = `f${String(n).padStart(4, '0')}`; fotos.push([id, kind, ref, 'demo', 'demo', w, h, caption, DEMO_EMAIL, at, '', '']); return id; };
   NAMES.forEach((name, k) => { if (k !== 2 && k % 4 !== 3) foto('spieler', `p${String(k + 1).padStart(3, '0')}`, 512, 512, '', cutoff - 20 + k / 10); });
   const lastSpiele = spiele.filter(r => typeof r[0] === 'number' && r[0] >= cutoff);
   [[2, 'Matchball!'], [2, ''], [5, 'Revanche geglückt'], [11, ''], [24, 'Das war knapp']].forEach(([back, caption], i) => {
     const r = lastSpiele.at(-back);
     if (r) foto('spiel', ref(r[0]), i % 2 ? 900 : 1200, i % 2 ? 1200 : 900, caption, r[0] + 0.002);
   });
-  return { config, legacy, spiele, players, aliases, corrections, management_log, fotos };
+  const raw = { config, legacy, spiele, players, aliases, corrections, management_log, fotos };
+  demoTournaments(raw, { now, rnd, skill: name => skill[NAMES.indexOf(name)] ?? 150, names: NAMES, live: size === 'turnier', foto });
+  return raw;
+}
+
+// Phase 18: made-up tournaments. „herbst“: a month ago, finished (9 members and two guests, three uneven groups,
+// two per group into the knockout, so with byes). „advent“ (?demo=turnier): today, a third of the matches played.
+// Results are played out with the real core (load), so the match numbers are the ones the app shows.
+function demoTournaments(raw, { now, rnd, skill, names, live, foto }) {
+  const guests = { Paul: 120, Sophie: 260 };
+  const strength = n => guests[n] ?? skill(n);
+  raw.turniere = [['id', 'name', 'datum', 'status', 'art', 'gruppen', 'gruppengroessen', 'weiter_pro_gruppe', 'saetze', 'punkte_pro_satz', 'spiel_um_platz_3', 'tische', 'setzstichtag', 'los', 'siegerfoto']];
+  raw.turnier_teilnehmer = [['turnier_id', 'name', 'setzplatz', 'gruppe', 'name_2']];
+  raw.turnier_ergebnisse = [['Zeitstempel', 'Turnier', 'Spiel-Nr.', 'Begegnung', 'Satz 1', 'Satz 2', 'Satz 3', 'Satz 4', 'Satz 5', 'Satz 6', 'Satz 7']];
+  let day = now - 30;
+  while (((day - 2) % 7 + 7) % 7 > 4) day--;                          // a weekday
+  const plan = [{ id: 'herbst', name: 'Herbstturnier', day, status: 'beendet', groups: 3, players: [...names.slice(0, 9), 'Paul', 'Sophie'], share: 1 }];
+  if (live) plan.push({ id: 'advent', name: 'Adventturnier', day: now, status: 'aktiv', groups: 2, players: [...names.slice(0, 9), 'Paul'], share: 0.35 });
+  for (const T of plan) {
+    raw.turniere.push([T.id, T.name, T.day, T.status, 'einzel', T.groups, '', '2', 'Gruppe 3, Halbfinale 5, Spiel um Platz 3 5, Finale 5', 11, 'ja', 2, T.day, 1, '']);
+    for (const n of T.players) raw.turnier_teilnehmer.push([T.id, n, '', '', '']);
+  }
+  for (const T of plan) {
+    let t = T.day + 12 / 24, played = 0, state;
+    for (let round = 0; round < 40; round++) {
+      state = load(raw).tournaments.find(x => x.id === T.id);
+      const open = state.matches.filter(m => m.status === 'offen');
+      const goal = Math.round(state.total * T.share);
+      if (!open.length || played >= goal) break;
+      for (const m of open.slice(0, goal - played)) {
+        const p = 1 / (1 + 10 ** ((strength(m.b.name) - strength(m.a.name)) / 400));
+        raw.turnier_ergebnisse.push([t += (7 + rnd() * 8) / 1440, T.id, m.nr, `${m.a.name} gegen ${m.b.name}`, ...demoSets(m.bestOf, rnd() < p, rnd)]);
+        played++;
+      }
+    }
+    if (T.status === 'aktiv') {   // the results so far end a few minutes ago
+      const rows = raw.turnier_ergebnisse.filter(r => r[1] === T.id), shift = rows.length ? rows.at(-1)[0] - (nowSerialOf(now) - 6 / 1440) : 0;
+      for (const r of rows) r[0] -= shift;
+    } else {
+      foto('turnier', T.id, 1200, 900, 'Alle zusammen', T.day + 0.74);
+      const winnerShot = foto('turnier', T.id, 900, 1200, 'Der Sieger mit Pokal', T.day + 0.75);
+      raw.turniere.find(r => r[0] === T.id)[14] = winnerShot;
+      const fin = state.matches.find(m => m.label === 'Finale');
+      if (fin?.result) foto('turnier_spiel', `${T.id}#${fin.nr}`, 900, 1200, 'Der Matchball im Finale', fin.result.t + 0.001);
+    }
+  }
+}
+const nowSerialOf = day => day + 15.5 / 24;   // „now“ in the live demo tournament: mid-afternoon of today
+
+/** Sets of one match, side a wins if aWins: [ '11:7', … , '' …] (seven cells). */
+function demoSets(bestOf, aWins, rnd) {
+  const need = Math.floor(bestOf / 2) + 1, out = [];
+  let a = 0, b = 0;
+  while (a < need && b < need) {
+    const aSet = rnd() < (aWins ? 0.7 : 0.3);
+    const lo = rnd() < 0.2 ? 10 + Math.floor(rnd() * 3) : Math.floor(rnd() * 10);
+    const hi = lo >= 10 ? lo + 2 : 11;
+    out.push(aSet ? `${hi}:${lo}` : `${lo}:${hi}`);
+    if (aSet) a++; else b++;
+    if (a === need - 1 && b === need - 1) continue;
+  }
+  // the winner must be the planned one: if not, swap every set
+  if ((a > b) !== aWins) for (let i = 0; i < out.length; i++) out[i] = out[i].split(':').reverse().join(':');
+  while (out.length < 7) out.push('');
+  return out;
 }
 
 // Made-up question IDs, so the demo shows the pages that enter in the app (nothing is sent anywhere)
@@ -94,6 +161,8 @@ const DEMO_IDS = Object.fromEntries([
   'management_entry_action', 'management_entry_new_player', 'management_entry_new_account', 'management_entry_old_name',
   'management_entry_new_name', 'management_entry_inactive_player', 'management_entry_active_player', 'management_entry_merge_from',
   'management_entry_merge_into', 'management_entry_account_player', 'management_entry_account',
+  'tournament_entry_tournament', 'tournament_entry_match', 'tournament_entry_pairing', 'tournament_entry_set1', 'tournament_entry_set2',
+  'tournament_entry_set3', 'tournament_entry_set4', 'tournament_entry_set5', 'tournament_entry_set6', 'tournament_entry_set7',
 ].map((k, i) => ['form_' + k, String(1000 + i)]));
 
 /**
@@ -116,6 +185,7 @@ export function demoForms(timeZone) {
       return id;
     },
     removePhoto(id) { ops.push({ form: 'photo-delete', answers: { id }, t: nowSerial(timeZone) }); },
+    setWinnerPhoto(id, tournament) { ops.push({ form: 'photo-winner', answers: { id, tournament }, t: nowSerial(timeZone) }); },
     photoFile: (id, size) => files.get(id)?.[size === 'full' ? 'image' : 'thumb'] || null,
     apply(raw) {
       for (const op of ops) {
@@ -123,9 +193,17 @@ export function demoForms(timeZone) {
           const a = op.answers;
           raw.spiele.push([op.t, a.winner1, a.winner2 || '', a.loser1, a.loser2 || '']);
         } else if (op.form === 'management') manageRaw(raw, op);
+        else if (op.form === 'tournament') {
+          const a = op.answers;
+          raw.turnier_ergebnisse ||= [['Zeitstempel', 'Turnier', 'Spiel-Nr.', 'Begegnung', 'Satz 1', 'Satz 2', 'Satz 3', 'Satz 4', 'Satz 5', 'Satz 6', 'Satz 7']];
+          raw.turnier_ergebnisse.push([op.t, a.tournament, Number(a.match), a.pairing, ...[1, 2, 3, 4, 5, 6, 7].map(i => a[`set${i}`] || '')]);
+        }
         else if (op.form === 'photo') {
           const a = op.answers;
           raw.fotos.push([a.id, a.kind, a.ref, 'demo', 'demo', a.width, a.height, a.caption, DEMO_EMAIL, op.t, '', '']);
+        } else if (op.form === 'photo-winner') {
+          const row = raw.turniere?.find(r => r[0] === op.answers.tournament);
+          if (row) row[14] = op.answers.id;
         } else if (op.form === 'photo-delete') {
           const row = raw.fotos.find(r => r[0] === op.answers.id);
           if (row) { row[10] = op.t; row[11] = DEMO_EMAIL; }

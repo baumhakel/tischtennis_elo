@@ -10,14 +10,14 @@ import { launch, viewReady, sleep } from './browser.mjs';
 import { VIEWS } from '../js/views/index.js';
 
 const quick = process.argv.includes('--quick');
-const SIZES = quick ? ['demo'] : ['demo', 'demo=gross'];
+const SIZES = quick ? ['demo'] : ['demo', 'demo=gross', 'demo=turnier'];   // Phase 18: a tournament going on
 const MODES = quick ? [null] : [null, 'einzel', 'doppel'];
 const LINKS_PER_VIEW = quick ? 2 : 4;          // detail links followed per target view and size
 const KNOWN = [/accounts\.google\.com\/gsi\/client/, /favicon\.ico/];
 const IDS = new Set(VIEWS.map(v => v.id));
 // views that need a parameter are reached through the links found on the other pages
 const DIRECT = VIEWS.filter(v => v.menu !== false && !['player', 'h2h', 'more'].includes(v.id)).map(v => v.id)
-  .concat(['eintragen', 'melden', 'verwalten']);   // Phase 18a: reached from the menu (Mitmachen)
+  .concat(['eintragen', 'melden', 'verwalten', 'turnier']);   // Phase 18a: reached from the menu (Mitmachen) · Phase 18: the Turnier tab
 
 const problems = [];
 const browser = await launch();

@@ -1,9 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Tischtennis Elo app icon: a paddle and a ball on the table green, with the table's white centre line.
+  <!-- Tischtennis Elo app icon: a paddle and a ball on the table green, with the white net across.
        Everything that matters sits inside the central 80 % circle, so the same drawing works as a maskable icon.
        Rendered to PNG by scripts/make-icons.mjs. -->
   <rect width="512" height="512" fill="#1D5E46"/>
-  <rect x="0" y="252" width="512" height="8" fill="#FFFFFF" opacity="0.22"/>
+  <!-- the net across the table: a white band with its shadow, clearly visible also at 48 px -->
+  <rect x="0" y="262" width="512" height="18" fill="#000000" opacity="0.14"/>
+  <rect x="0" y="246" width="512" height="16" fill="#FFFFFF"/>
   <g transform="translate(20 14)">
   <g transform="rotate(-38 236 268)">
     <rect x="216" y="290" width="40" height="112" rx="16" fill="#C9A27E"/>

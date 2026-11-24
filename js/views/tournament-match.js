@@ -24,7 +24,14 @@ export default {
   title: 'Turnierspiel',
   mount(el, ctx) {
     let last = ctx;
-    const update = c => { last = c; render(el, page(c, () => update(last))); };
+    // a redraw (store change, arriving photo) must not take the cursor out of a set field
+    const update = c => {
+      last = c;
+      const f = document.activeElement?.dataset?.pt ? [document.activeElement.dataset.pt, document.activeElement.selectionStart] : null;
+      render(el, page(c, () => update(last)));
+      const next = f && el.querySelector(`[data-pt="${f[0]}"]`);
+      if (next) { next.focus(); if (f[1] != null) next.setSelectionRange(f[1], f[1]); }
+    };
     update(ctx);
     return { update, unmount() {} };
   },
@@ -94,11 +101,7 @@ function entry(ctx, T, m, rerender) {
     'aria-label': `Satz ${i + 1}, Punkte ${sideName(ctx, j ? m.b : m.a)}`,
     oninput: e => {
       rows[i][j] = e.target.value.replace(/\D/g, '').slice(0, 2);
-      // redraw (check, button), then put the cursor back where it was
-      const pos = e.target.selectionStart;
-      rerender();
-      const next = document.querySelector(`[data-pt="${i}-${j}"]`);
-      next?.focus(); if (next && pos != null) next.setSelectionRange(pos, pos);
+      rerender();   // check and button; the cursor stays (mount)
     },
     dataset: { pt: `${i}-${j}` },
   });

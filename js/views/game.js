@@ -78,7 +78,9 @@ function page(ctx) {
       ' hat dieselben Spieler und dasselbe Ergebnis. War es nur ein Spiel, bitte eines davon streichen lassen.') : null,
     h('p', { class: 'lead' }, `${team(x.winners)} ${x.double ? 'schlagen' : 'schlägt'} ${team(x.losers)}.`),
     h('div', { class: 'sides' }, side('Gewonnen', W, 'win'), side('Verloren', L, 'loss')),
-    photoStrip(ctx, 'spiel', x.ref),
+    // a tournament match keeps its photos at the match (Phase 18): shown here too, added there
+    x.source === 'turnier' ? photoStrip(ctx, 'turnier_spiel', `${x.tournament.id}#${x.tournament.nr}`, { title: 'Fotos vom Turnierspiel' }) : null,
+    photoStrip(ctx, 'spiel', x.ref, { add: x.source !== 'turnier' }),
     ctx.badges ? earnedInGame(ctx, ctx.badges, ctx.mode === 'alle' ? g : findGame(ctx.baseModel.dataset, x.ref)) : null,
     h('div', { class: 'tiles' },
       tile({ label: 'Siegchance vorher', value: fmt.pct(f.eW), sub: `für ${team(x.winners)}` }),

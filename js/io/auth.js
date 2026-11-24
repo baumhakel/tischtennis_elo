@@ -5,7 +5,7 @@
 // until it expires (about an hour), so reopening the app within that time needs no tap.
 // After expiry the app keeps showing the cached data and offers a one-tap refresh.
 
-import { SCOPE, TOKEN_MARGIN_SECONDS, STORAGE_PREFIX } from '../config.js';
+import { SCOPE, SHEETS_SCOPE, EMAIL_SCOPE, TOKEN_MARGIN_SECONDS, STORAGE_PREFIX } from '../config.js';
 
 const KEY = STORAGE_PREFIX + '-auth';
 
@@ -22,7 +22,10 @@ export class AuthError extends Error {
  */
 export function createAuth({ clientId }) {
   let client = null;
-  let saved = read();            // { t, exp, email }
+  let saved = read();            // { t, exp, email, emailScope }
+  // a token from before 24 Nov 2026 was asked for without the e-mail scope: drop it, so the next tap on
+  // „Anmelden“ asks Google once more (with the e-mail). The address itself stays as the login hint.
+  if (saved.t && saved.emailScope === undefined) { saved = { email: saved.email }; write(saved); }
   let pending = null;            // { resolve, reject } of the running signIn()
   let failed = false;            // GIS script did not load (blocked, offline)
   const listeners = new Set();
@@ -84,11 +87,13 @@ export function createAuth({ clientId }) {
 
   function onToken(resp) {
     if (resp.error) return finish(new AuthError('failed', resp.error_description || resp.error));
-    if (!window.google.accounts.oauth2.hasGrantedAllScopes(resp, SCOPE)) {
+    // only reading the sheet is required (hasGrantedAllScopes takes one scope per argument, not a list)
+    if (!window.google.accounts.oauth2.hasGrantedAllScopes(resp, SHEETS_SCOPE)) {
       return finish(new AuthError('scope_denied', 'Bitte beim Anmelden den Zugriff auf Google Tabellen erlauben.'));
     }
+    const hasEmail = window.google.accounts.oauth2.hasGrantedAllScopes(resp, EMAIL_SCOPE);
     saved = {
-      t: resp.access_token,
+      t: resp.access_token, emailScope: hasEmail,
       exp: Date.now() + (Number(resp.expires_in) - TOKEN_MARGIN_SECONDS) * 1000,
       email: saved.email,
     };
@@ -117,7 +122,7 @@ function write(v) {
   try { localStorage.setItem(KEY, JSON.stringify(v)); } catch { /* private mode: token lives in memory only */ }
 }
 
-/** The signed-in account's e-mail, for display and as login hint. Uses the token itself; no extra scope. */
+/** The signed-in account's e-mail, for display, „Ich“ and as login hint. tokeninfo names it only with the e-mail scope. */
 async function fetchEmail(token) {
   try {
     const r = await fetch('https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=' + encodeURIComponent(token));

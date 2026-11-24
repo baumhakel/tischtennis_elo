@@ -198,7 +198,12 @@ export const CONFIG_DEFAULTS = {
 // ───────── Technical constants (not in the config tab) ─────────
 // These are needed before the config tab can be read (sign-in, the request that reads it)
 // or are storage names, so they cannot live in the sheet.
-export const SCOPE = 'https://www.googleapis.com/auth/spreadsheets.readonly';
+// Reading the sheet (required) and the account's e-mail address (not a sensitive scope, no warning screen).
+// Without the e-mail, Google's tokeninfo doesn't name the account: no „Angemeldet als …“, no „Ich“ from the
+// account, and the photo web app (Fotos.gs) refuses the token. Fixed 24 Nov 2026.
+export const SHEETS_SCOPE = 'https://www.googleapis.com/auth/spreadsheets.readonly';
+export const EMAIL_SCOPE = 'https://www.googleapis.com/auth/userinfo.email';
+export const SCOPE = `${EMAIL_SCOPE} ${SHEETS_SCOPE}`;
 export const TOKEN_MARGIN_SECONDS = 60;   // treat the access token as expired this much earlier
 export const FETCH_TIMEOUT_MS = 20000;    // give up on the Sheets request after this
 export const STORAGE_PREFIX = 'tt-elo';   // localStorage keys and IndexedDB name

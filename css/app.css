@@ -733,7 +733,8 @@ h3 { font-size: 15px; margin: var(--s4) 0 var(--s2); }
 /* ── Phase 17 tap audit: every target at least 44 × 44 px (test/tap-audit.mjs) ──
    Compact things keep their look and get a larger invisible touch area (an absolutely placed ::before);
    controls and buttons simply get the height. Exceptions, on purpose: the cells and name headings of the
-   dense matrices (a 12 × 12 grid can't fit 44 px cells on a phone) and links inside running text. */
+   dense matrices (a 12 × 12 grid can't fit 44 px cells on a phone), the Doppelspezialist points (24 px, larger
+   ones overlap; the table below the chart is the large target) and links inside running text. */
 tr.tap-row > td { height: 44px; }
 select, input[type="text"], input[type="number"], input[type="search"], input[type="date"] { min-height: 44px; }
 input[type="range"] { height: 44px; }

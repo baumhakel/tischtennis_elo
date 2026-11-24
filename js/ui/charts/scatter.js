@@ -28,7 +28,9 @@ export function scatter({ points, xLabel, yLabel, ariaLabel, diagonalLabel }) {
     const a = svg('a', { href: p.href, class: 'pt' + (p.highlight ? ' me' : '') });
     if (p.onclick) a.addEventListener('click', p.onclick);
     a.appendChild(svg('title', {}, p.title || p.label));
-    a.appendChild(svg('circle', { cx: sx(p.x), cy: sy(p.y), r: 22, class: 'hit' }));   // invisible: a 44 px touch target around the dot and its name
+    // invisible touch area, a little larger than the dot (24 px: larger ones overlap too much between close points;
+    // the table below the chart is the large target). Painted invisible inline, so it never shows, even with an old stylesheet
+    a.appendChild(svg('circle', { cx: sx(p.x), cy: sy(p.y), r: 12, class: 'hit', style: 'fill: transparent; stroke: none' }));
     a.appendChild(svg('circle', { cx: sx(p.x), cy: sy(p.y), r: 5 }));
     a.appendChild(svg('text', { x: sx(p.x) + 7, y: sy(p.y) + 4, class: 'name' }, p.label));
     root.appendChild(a);

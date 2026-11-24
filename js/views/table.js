@@ -10,6 +10,7 @@ import { viewHead, nameOf as nameOfK, plainTable, linkTo } from './common.js';
 import { formReady } from '../app/forms.js';
 import { wonLabel } from './enter-logic.js';
 import { confirmResult } from './enter-confirm.js';
+import { avatar, withEnds } from '../ui/avatar.js';
 import {
   outcome, splits, whoPlays, gamesTodayWeek, prefillUrl, applyGames, standings, ratingOf,
   winsNeeded, shrunkResiduals, suggestions,
@@ -51,7 +52,7 @@ function page(ctx, rerender) {
   const presentBox = h('div', { class: 'legend table-present' },
     session.present.map(id => h('button', { class: 'chip', type: 'button', 'aria-label': `${name(id)} entfernen`,
       onclick: () => set(() => { session.present = session.present.filter(x => x !== id); session.pick = 0; }) },
-      name(id), h('span', { class: 'x', 'aria-hidden': 'true' }, '×'))),
+      avatar(ctx, id, { size: 22 }), name(id), h('span', { class: 'x', 'aria-hidden': 'true' }, '×'))),
     session.present.length < MAX_PRESENT ? h('select', { 'aria-label': 'Spieler hinzufügen', onchange: e => {
       const id = e.target.value;
       if (id) set(() => { session.present = [...session.present, id]; session.pick = 0; });
@@ -154,9 +155,9 @@ function preview(ctx, A, B, name, set) {
   const { eW } = outcome(P.m, P.vis, P.f.minGames, A, B);
   return h('section', { class: 'preview' },
     h('h2', {}, `${label(A)} gegen ${label(B)}`),
-    h('div', { class: 'chance-bar', role: 'img', 'aria-label': `Siegchance ${label(A)} ${fmt.pct(eW)}, ${label(B)} ${fmt.pct(1 - eW)}` },
+    withEnds(ctx, A, B, h('div', { class: 'chance-bar', role: 'img', 'aria-label': `Siegchance ${label(A)} ${fmt.pct(eW)}, ${label(B)} ${fmt.pct(1 - eW)}` },
       h('span', { class: 'a', style: `width:${(eW * 100).toFixed(1)}%` }, fmt.pct(eW)),
-      h('span', { class: 'b' }, fmt.pct(1 - eW))),
+      h('span', { class: 'b' }, fmt.pct(1 - eW)))),
     h('p', { class: 'muted small' }, `${typeWord} in der Wertung „${WORD[primary]}“. Klein darunter: Wertung „${WORD[secondary]}“.`),
     h('div', { class: 'outcomes' }, side(A, B), side(B, A)));
 }

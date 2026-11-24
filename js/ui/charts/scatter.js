@@ -31,8 +31,11 @@ export function scatter({ points, xLabel, yLabel, ariaLabel, diagonalLabel }) {
     // invisible touch area, a little larger than the dot (24 px: larger ones overlap too much between close points;
     // the table below the chart is the large target). Painted invisible inline, so it never shows, even with an old stylesheet
     a.appendChild(svg('circle', { cx: sx(p.x), cy: sy(p.y), r: 12, class: 'hit', style: 'fill: transparent; stroke: none' }));
-    a.appendChild(svg('circle', { cx: sx(p.x), cy: sy(p.y), r: 5 }));
-    a.appendChild(svg('text', { x: sx(p.x) + 7, y: sy(p.y) + 4, class: 'name' }, p.label));
+    a.appendChild(svg('circle', { cx: sx(p.x), cy: sy(p.y), r: p.face ? 9 : 5 }));
+    // Phase 18b: a small face on the point (the name stays next to it)
+    if (p.face) a.appendChild(svg('image', { href: p.face, x: sx(p.x) - 8, y: sy(p.y) - 8, width: 16, height: 16,
+      style: 'clip-path: circle(50%)', preserveAspectRatio: 'xMidYMid slice' }));
+    a.appendChild(svg('text', { x: sx(p.x) + (p.face ? 11 : 7), y: sy(p.y) + 4, class: 'name' }, p.label));
     root.appendChild(a);
   }
   return root;

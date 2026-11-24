@@ -14,6 +14,7 @@ import { COLUMNS, OPTIONAL_COLUMNS, CONFIG_DEFAULTS, TABS } from '../config.js';
 import {
   clean, norm, toBool, toNumber, parseTime, hasTimeOfDay, roundSerial, formatRef, serialToParts, readTable, cell, fnv1a,
 } from './normalize.js';
+import { parsePhotos } from './photos.js';
 
 /** @typedef {import('../types.js').RawSheets} RawSheets */
 /** @typedef {import('../types.js').Dataset} Dataset */
@@ -87,9 +88,10 @@ export function load(raw) {
   flagDuplicates(games, config.duplicate_window_minutes, report);
 
   const log = parseLog(raw.management_log);
+  const photos = parsePhotos(raw.fotos, players);   // Phase 18b
   // every name ever used (aliases + display names, normalised): a new name must not be one of them (core/manage.js)
   const takenNames = [...idByName.keys()];
-  return { config, players, games, issues, counts, takenNames, log, hash: datasetHash(config, players, games, log) };
+  return { config, players, games, issues, counts, takenNames, log, photos, hash: datasetHash(config, players, games, log, photos) };
 }
 
 // ───────── management_log (Phase 18a) ─────────
@@ -517,9 +519,10 @@ export function flagDuplicates(games, minutes, report) {
 
 // ───────── 6. hash ─────────
 
-function datasetHash(config, players, games, log = []) {
+function datasetHash(config, players, games, log = [], photos = null) {
   const last = log.at(-1);
   const parts = [
+    `fotos:${photos?.rev || ''}`,
     `log:${log.length}:${last ? `${last.row}:${last.status}` : ''}`,
     JSON.stringify(Object.keys(config).sort().map(k => [k, config[k]])),
     [...players.values()].map(p => `${p.id}:${p.name}:${p.active ? 1 : 0}:${p.accounts.join(';')}`).sort().join(','),

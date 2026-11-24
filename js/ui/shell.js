@@ -302,6 +302,10 @@ export function createShell(root, { store, actions }) {
         ? ['Die Nutzungszählung ist auf diesem Gerät aus. ', h('button', { class: 'link', type: 'button', onclick: () => actions.setUsageOff(false) }, 'Wieder einschalten')]
         : ['Die App zählt anonym, welche Seiten wie oft geöffnet werden: eine Zeile pro Gerät und Tag, mit einer zufälligen Gerätenummer, ohne Namen und Konten. Das hilft beim Aufräumen. ',
           h('button', { class: 'link', type: 'button', onclick: () => actions.setUsageOff(true) }, 'Auf diesem Gerät ausschalten')]) : null,
+      // Phase 18b: faces next to names, per device
+      cfg?.photos_url ? h('p', { class: 'muted small' }, actions.facesOn()
+        ? ['Profilbilder werden neben den Namen gezeigt. ', h('button', { class: 'link', type: 'button', onclick: () => actions.setFaces(false) }, 'Auf diesem Gerät ausblenden')]
+        : ['Profilbilder sind auf diesem Gerät ausgeblendet. ', h('button', { class: 'link', type: 'button', onclick: () => actions.setFaces(true) }, 'Wieder zeigen')]) : null,
       h('p', { class: 'muted small' }, `Version ${APP_VERSION}`));
 
     filterSection.hidden = !model;
@@ -327,7 +331,11 @@ export function createShell(root, { store, actions }) {
     const team = ids => ids.map(nameOf).join(' & ');
     render(notice, games.length === 1
       ? link(s.filters, 'spiel', { ref: games[0].ref }, `Angekommen: ${team(games[0].winners)} ${games[0].double ? 'schlagen' : 'schlägt'} ${team(games[0].losers)}`)
-      : link(s.filters, 'spiele', {}, `${games.length} neue Spiele angekommen`), close);
+      : link(s.filters, 'spiele', {}, `${games.length} neue Spiele angekommen`),
+      // Phase 18b: the moment right after the game is when people take a photo
+      games.length === 1 && model.dataset.config.photos_url
+        ? h('a', { class: 'notice-action', href: formatHash({ view: 'spiel', params: { ref: games[0].ref, foto: '1' }, filters: s.filters }) }, 'Foto') : null,
+      close);
   }
 
   function renderEmpty(el, s) {

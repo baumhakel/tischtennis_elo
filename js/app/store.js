@@ -12,6 +12,7 @@
 //   fresh:   null | [game_ref…]                     games just arrived, marked in the lists for a moment
 //   install: null | 'prompt' | 'ios'               what „Als App installieren“ offers (app/install.js)
 //   usage:   { configured, off }                    usage counting (app/usage.js), for the line in the menu
+//   photosRev: number                               bumped when images arrived in memory (app/photos.js); a router dep
 // }
 // model = { dataset, elo, stats } once loaded.
 
@@ -27,6 +28,7 @@ export function initialState() {
     fresh: null,
     install: null,
     usage: { configured: false, off: false },
+    photosRev: 0,
   };
 }
 

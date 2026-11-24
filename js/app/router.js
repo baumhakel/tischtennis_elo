@@ -33,9 +33,9 @@ export function createRouter({ store, el, makeCtx, renderEmpty, renderEmptyWindo
       document.title = `${def.title} – Tischtennis Elo`;
       return;
     }
-    const deps = { model: state.data.model, filters: state.filters, params: state.params, me: state.me, email: state.auth.email, badges: state.data.badgesFor, forecast: state.data.forecastFor, lab: state.data.labFor, fresh: state.fresh };
+    const deps = { model: state.data.model, filters: state.filters, params: state.params, me: state.me, email: state.auth.email, badges: state.data.badgesFor, forecast: state.data.forecastFor, lab: state.data.labFor, fresh: state.fresh, photos: state.photosRev };
     if (mounted && mounted.id === def.id) {
-      if (deps.model !== last.model || deps.filters !== last.filters || deps.params !== last.params || deps.me !== last.me || deps.email !== last.email || deps.badges !== last.badges || deps.forecast !== last.forecast || deps.lab !== last.lab || deps.fresh !== last.fresh) {
+      if (deps.model !== last.model || deps.filters !== last.filters || deps.params !== last.params || deps.me !== last.me || deps.email !== last.email || deps.badges !== last.badges || deps.forecast !== last.forecast || deps.lab !== last.lab || deps.fresh !== last.fresh || deps.photos !== last.photos) {
         mounted.instance.update?.(ctx);
       }
       last = deps;
@@ -74,7 +74,7 @@ export function createRouter({ store, el, makeCtx, renderEmpty, renderEmptyWindo
     el.removeAttribute('aria-busy');
     const fresh = store.get();
     mounted = { id: def.id, instance: view.mount(el, makeCtx(fresh) || ctx) };
-    last = { model: fresh.data.model, filters: fresh.filters, params: fresh.params, me: fresh.me, email: fresh.auth.email, badges: fresh.data.badgesFor, forecast: fresh.data.forecastFor, lab: fresh.data.labFor, fresh: fresh.fresh };
+    last = { model: fresh.data.model, filters: fresh.filters, params: fresh.params, me: fresh.me, email: fresh.auth.email, badges: fresh.data.badgesFor, forecast: fresh.data.forecastFor, lab: fresh.data.labFor, fresh: fresh.fresh, photos: fresh.photosRev };
     document.title = `${def.title} – Tischtennis Elo`;
   }
 

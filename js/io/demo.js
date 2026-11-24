@@ -64,7 +64,7 @@ export function demoRaw(timeZone, size = 'klein') {
     [ref(wrong[0]), 'replace', 'Demo: falscher Gegner', '', wrong[3], right]];
 
   const demoValue = { responses_valid_from: cutoff, form_result_url: DEMO_FORM, form_support_url: DEMO_FORM, form_management_url: DEMO_FORM,
-    management_accounts: DEMO_EMAIL, ...DEMO_IDS };
+    management_accounts: DEMO_EMAIL, photos_url: 'https://example.org/demo-fotos', ...DEMO_IDS };
   const config = [['key', 'value', 'note'], ...Object.entries(CONFIG_DEFAULTS)
     .map(([k, d]) => [k, k in demoValue ? demoValue[k] : d.value, 'Demo'])];
   // the demo account is mapped to the third player, so „Ich“ works without asking
@@ -73,7 +73,18 @@ export function demoRaw(timeZone, size = 'klein') {
   const aliases = [['name', 'player_id'], ...NAMES.map((n, k) => [n, `p${String(k + 1).padStart(3, '0')}`])];
   const management_log = [['timestamp', 'action', 'player_id', 'old_value', 'new_value', 'submitted_by', 'status'],
     ...NAMES.map((n, k) => [cutoff - 30, 'add', `p${String(k + 1).padStart(3, '0')}`, '', n, 'legacy migration', 'ok'])];
-  return { config, legacy, spiele, players, aliases, corrections, management_log };
+  // Phase 18b: made-up photos (drawn by io/demo-photos.js): profile pictures for most players (not Clara, so the
+  // demo account can add one), and photos of a few recent games
+  const fotos = [['id', 'kind', 'ref', 'file_id', 'thumb_id', 'width', 'height', 'caption', 'uploaded_by', 'uploaded_at', 'deleted_at', 'deleted_by']];
+  let n = 0;
+  const foto = (kind, ref, w, h, caption, at) => { n++; const id = `f${String(n).padStart(4, '0')}`; fotos.push([id, kind, ref, 'demo', 'demo', w, h, caption, DEMO_EMAIL, at, '', '']); };
+  NAMES.forEach((name, k) => { if (k !== 2 && k % 4 !== 3) foto('spieler', `p${String(k + 1).padStart(3, '0')}`, 512, 512, '', cutoff - 20 + k / 10); });
+  const lastSpiele = spiele.filter(r => typeof r[0] === 'number' && r[0] >= cutoff);
+  [[2, 'Matchball!'], [2, ''], [5, 'Revanche geglückt'], [11, ''], [24, 'Das war knapp']].forEach(([back, caption], i) => {
+    const r = lastSpiele.at(-back);
+    if (r) foto('spiel', ref(r[0]), i % 2 ? 900 : 1200, i % 2 ? 1200 : 900, caption, r[0] + 0.002);
+  });
+  return { config, legacy, spiele, players, aliases, corrections, management_log, fotos };
 }
 
 // Made-up question IDs, so the demo shows the pages that enter in the app (nothing is sent anywhere)
@@ -94,14 +105,31 @@ const DEMO_IDS = Object.fromEntries([
  */
 export function demoForms(timeZone) {
   const ops = [];
+  const files = new Map();   // photo id → { image, thumb } uploaded in the demo
   return {
     async submit(form, answers) { ops.push({ form, answers, t: nowSerial(timeZone) }); },
+    /** Phase 18b: a photo „uploaded“ in the demo; returns its ID (after the made-up ones). */
+    addPhoto({ kind, ref, image, thumb, width, height, caption = '' }) {
+      const id = `f${String(100 + files.size).padStart(4, '0')}`;
+      files.set(id, { image, thumb });
+      ops.push({ form: 'photo', answers: { id, kind, ref, width, height, caption }, t: nowSerial(timeZone) });
+      return id;
+    },
+    removePhoto(id) { ops.push({ form: 'photo-delete', answers: { id }, t: nowSerial(timeZone) }); },
+    photoFile: (id, size) => files.get(id)?.[size === 'full' ? 'image' : 'thumb'] || null,
     apply(raw) {
       for (const op of ops) {
         if (op.form === 'result') {
           const a = op.answers;
           raw.spiele.push([op.t, a.winner1, a.winner2 || '', a.loser1, a.loser2 || '']);
         } else if (op.form === 'management') manageRaw(raw, op);
+        else if (op.form === 'photo') {
+          const a = op.answers;
+          raw.fotos.push([a.id, a.kind, a.ref, 'demo', 'demo', a.width, a.height, a.caption, DEMO_EMAIL, op.t, '', '']);
+        } else if (op.form === 'photo-delete') {
+          const row = raw.fotos.find(r => r[0] === op.answers.id);
+          if (row) { row[10] = op.t; row[11] = DEMO_EMAIL; }
+        }
       }
       return raw;
     },

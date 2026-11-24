@@ -1,4 +1,5 @@
 // Verlauf: Elo curves of all shown players over a chosen time range, raw or smoothed with form band.
+import { chartFace } from '../ui/avatar.js';
 import { h, render } from '../ui/dom.js';
 import * as fmt from '../ui/format.js';
 import { seriesColor, css, withAlpha } from '../ui/colors.js';
@@ -80,7 +81,7 @@ function raw(ctx, startG) {
     series: ks.map((k, i) => {
       const slot = ctx.focus.slotOf.get(k);
       return { label: nameOf(ctx, k), values: ys[i], stepped: axis !== 'own', context: slot == null,
-        color: slot == null ? ctxColor : seriesColor(slot) };
+        color: slot == null ? ctxColor : seriesColor(slot), face: slot == null ? null : chartFace(ctx, ctx.model.elo.ids[k]) };
     }),
   };
 }
@@ -103,7 +104,7 @@ function smoothed(ctx, startG) {
   ks.forEach((k, i) => {
     const slot = ctx.focus.slotOf.get(k);
     series.push({ label: nameOf(ctx, k), values: mean[i], spanGaps: true, context: slot == null,
-      color: slot == null ? ctxColor : seriesColor(slot) });
+      color: slot == null ? ctxColor : seriesColor(slot), face: slot == null ? null : chartFace(ctx, ctx.model.elo.ids[k]) });
   });
   return {
     x, xType: axis === 'date' ? 'time' : 'num', height: 320, y: {}, series, bands,

@@ -78,7 +78,25 @@ function fit(c, text, font, size, maxW, weight = '') {
   do { c.font = `${weight} ${s}px ${font}`; s -= 4; } while (c.measureText(text).width > maxW && s > 24);
 }
 
+/** url → a decoded image, or null. */
+async function loadImg(url) {
+  if (!url) return null;
+  const img = new Image();
+  img.src = url;
+  try { await img.decode(); return img; } catch { return null; }
+}
+
+/** Draw img into the box, cropped to fill it (like object-fit: cover). */
+function cover(c, img, x, y, w, h) {
+  const s = Math.max(w / img.naturalWidth, h / img.naturalHeight);
+  const sw = w / s, sh = h / s;
+  c.drawImage(img, (img.naturalWidth - sw) / 2, (img.naturalHeight - sh) / 2, sw, sh, x, y, w, h);
+}
+
 export async function cardCanvas(s, { stamp = '' } = {}) {
+  // Phase 18b: a profile picture in the head band (s.avatar), a game photo under it (s.photo); both are
+  // functions returning a Promise of an image URL, so the image is only loaded when a card is drawn
+  const [face, photo] = await Promise.all([s.avatar ? s.avatar().then(loadImg) : null, s.photo ? s.photo().then(loadImg) : null]);
   const cv = document.createElement('canvas');
   cv.width = CARD_W; cv.height = CARD_H;
   const c = cv.getContext('2d');
@@ -89,14 +107,22 @@ export async function cardCanvas(s, { stamp = '' } = {}) {
   c.fillStyle = C.table; c.fillRect(0, 0, CARD_W, 300);
   c.fillStyle = '#FFFFFF'; c.fillRect(0, 300, CARD_W, 8);
   c.fillStyle = 'rgba(255,255,255,0.78)'; c.font = `500 40px ${TEXT}`; c.textBaseline = 'alphabetic';
-  if (s.kicker) { fit(c, s.kicker, TEXT, 40, Wd, '500'); c.fillText(s.kicker, X, 120); }
-  c.fillStyle = '#FFFFFF'; fit(c, s.title, TEXT, 84, Wd, '700'); c.fillText(s.title, X, 222);
+  const headW = face ? Wd - 210 : Wd;
+  if (s.kicker) { fit(c, s.kicker, TEXT, 40, headW, '500'); c.fillText(s.kicker, X, 120); }
+  c.fillStyle = '#FFFFFF'; fit(c, s.title, TEXT, 84, headW, '700'); c.fillText(s.title, X, 222);
+  if (face) {
+    const r = 90, cx = R - r, cy = 154;
+    c.save(); c.beginPath(); c.arc(cx, cy, r, 0, 2 * Math.PI); c.clip(); cover(c, face, cx - r, cy - r, 2 * r, 2 * r); c.restore();
+    c.strokeStyle = '#FFFFFF'; c.lineWidth = 8; c.beginPath(); c.arc(cx, cy, r, 0, 2 * Math.PI); c.stroke();
+  }
 
   let y = 400;
+  if (photo) { cover(c, photo, 0, 308, CARD_W, 400); y = 708; }
   if (s.big != null) {
     c.fillStyle = s.tone === 'up' ? C.up : s.tone === 'down' ? C.down : C.ink;
-    fit(c, String(s.big), SCORE, 210, Wd, '700');
-    y += 150; c.fillText(String(s.big), X - 6, y);
+    const size = photo ? 120 : 210;
+    fit(c, String(s.big), SCORE, size, Wd, '700');
+    y += photo ? 130 : 150; c.fillText(String(s.big), X - 6, y);
     y += 20;
   }
   if (s.bigLabel) { c.fillStyle = C.muted; c.font = `500 44px ${TEXT}`; y += 50; c.fillText(s.bigLabel, X, y); }

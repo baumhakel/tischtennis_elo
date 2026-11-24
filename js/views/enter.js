@@ -11,6 +11,7 @@ import { viewHead } from './common.js';
 import { outcome } from './table-logic.js';
 import { pick, resize, complete, resultSentence } from './enter-logic.js';
 import { confirmResult } from './enter-confirm.js';
+import { avatar, withEnds } from '../ui/avatar.js';
 
 const session = { kind: null, s: null, sending: false };
 
@@ -62,7 +63,7 @@ function page(ctx, rerender) {
         type: 'button', class: 'chip pick' + (mine.includes(id) ? ' on' : '') + (other.includes(id) ? ' elsewhere' : ''),
         'aria-pressed': String(mine.includes(id)),
         onclick: () => set(() => { session.s = pick(session.s, side, id, size); }),
-      }, name(id), id === ctx.me.id ? h('span', { class: 'muted' }, ' (ich)') : null))));
+      }, avatar(ctx, id, { size: 24 }), name(id), id === ctx.me.id ? h('span', { class: 'muted' }, ' (ich)') : null))));
   };
 
   const ready = complete(session.s, size);
@@ -99,9 +100,9 @@ function previewBox(ctx, W, L, name) {
   const label = ids => ids.map(name).join(' & ');
   return h('section', { class: 'preview' },
     h('h2', {}, resultSentence(W, L, name)),
-    h('div', { class: 'chance-bar', role: 'img', 'aria-label': `Siegchance vorher ${label(W)} ${fmt.pct(o.eW)}, ${label(L)} ${fmt.pct(1 - o.eW)}` },
+    withEnds(ctx, W, L, h('div', { class: 'chance-bar', role: 'img', 'aria-label': `Siegchance vorher ${label(W)} ${fmt.pct(o.eW)}, ${label(L)} ${fmt.pct(1 - o.eW)}` },
       h('span', { class: 'a', style: `width:${(o.eW * 100).toFixed(1)}%` }, fmt.pct(o.eW)),
-      h('span', { class: 'b' }, fmt.pct(1 - o.eW))),
+      h('span', { class: 'b' }, fmt.pct(1 - o.eW)))),
     h('p', { class: 'small' }, `Siegchance vorher für ${label(W)}: ${fmt.pct(o.eW)} · Elo-Punkte: ${fmt.signed(o.delta, 1)} für ${W.length > 1 ? 'jeden Sieger' : 'den Sieger'}, ${fmt.signed(-o.delta, 1)} für ${L.length > 1 ? 'jeden Verlierer' : 'den Verlierer'}`),
     h('p', { class: 'muted small' }, `Wertung „${WORD[mode]}“.`));
 }

@@ -5,6 +5,7 @@ import { seriesColor } from '../ui/colors.js';
 import { ratingSeries } from '../ui/series.js';
 import { lineChart } from '../ui/charts/line.js';
 import { tile, viewHead, nameOf, byName, linkTo, modeNote, missingInMode, MODE_WORD } from './common.js';
+import { avatar } from '../ui/avatar.js';
 import { duel } from './duels.js';
 import { gameList } from './games.js';
 import { badgeCompare } from './badges.js';
@@ -43,6 +44,11 @@ export default {
           h('span', { class: 'side' }, h('span', { class: 'key', style: `background:${seriesColor(0)}` }), pick('a', a, { exclude: [b, a2, b2] }), solo ? null : pick('a2', a2, { optional: true, exclude: [a, b, b2] })),
           h('span', { class: 'vs' }, 'gegen'),
           h('span', { class: 'side' }, h('span', { class: 'key', style: `background:${seriesColor(1)}` }), pick('b', b, { exclude: [a, a2, b2] }), solo ? null : pick('b2', b2, { optional: true, exclude: [a, b, a2] }))),
+        // Phase 18b: the two sides as faces („Anna gegen Bernd“), rings in the sides' colours
+        c.photos?.faces ? h('div', { class: 'duel-faces', 'aria-hidden': 'true' },
+          h('span', { class: 'side' }, A.map(id => avatar(c, id, { size: A.length > 1 ? 48 : 64, ring: seriesColor(0) }))),
+          h('span', { class: 'vs' }, 'gegen'),
+          h('span', { class: 'side' }, B.map(id => avatar(c, id, { size: B.length > 1 ? 48 : 64, ring: seriesColor(1) })))) : null,
         absent.length ? modeNote(`${absent.map(id => c.names.get(id) ?? id).join(' und ')} ${absent.length === 1 ? 'hat' : 'haben'} noch kein ${MODE_WORD[c.mode]} gespielt, deshalb ist hier jemand anderes ausgewählt.`) : null,
         solo && (c.params.a2 || c.params.b2) ? modeNote('Teamvergleiche gibt es nur in den Wertungen „Alle“ und „Doppel“.') : null,
         (a2 && !b2) || (b2 && !a2) ? h('p', { class: 'chart-note' }, 'Für einen Teamvergleich auf beiden Seiten einen Partner wählen. Bis dahin werden die Einzelspieler verglichen.') : null,

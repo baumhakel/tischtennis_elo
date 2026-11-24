@@ -54,7 +54,7 @@ export async function drawGraph(el, spec) {
     'aria-label': `Netzwerk: ${spec.nodes.length} Spieler, ${spec.edges.length} Verbindungen` });
 
   const ink = css('--ink'), pos1 = css('--div-pos'), neg = css('--div-neg');
-  const R = 9, HEAD = 9;                              // node radius, arrowhead length (px in layout units)
+  const R = spec.nodes.some(n => n.face) ? 13 : 9, HEAD = 9;                            // node radius, arrowhead length (px in layout units)
   const edgesG = svg('g');
   const edgeEls = [], nodeEls = [];
   for (const e of spec.edges.slice().sort((a, b) => a.w - b.w)) {
@@ -93,6 +93,9 @@ export async function drawGraph(el, spec) {
     const g = svg('g', { class: 'node', transform: `translate(${p.x.toFixed(1)},${p.y.toFixed(1)})`, 'data-k': n.k });
     nodeEls.push({ g, k: n.k });
     g.appendChild(svg('circle', { r: R, fill: n.color }));
+    // Phase 18b: the face inside the node, the node's colour as its ring
+    if (n.face) g.appendChild(svg('image', { href: n.face, x: -R + 2, y: -R + 2, width: 2 * R - 4, height: 2 * R - 4,
+      style: 'clip-path: circle(50%)', preserveAspectRatio: 'xMidYMid slice' }));
     const t = svg('text', { y: R + 14, 'text-anchor': 'middle' });
     t.textContent = n.label;
     g.appendChild(t);

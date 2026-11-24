@@ -13,6 +13,26 @@ import { shareButton } from '../ui/share.js';
 import { playerSpec } from './share-cards.js';
 import { earnedCard, newestOf, nextGoals, collectionLink, goalRow } from './badges.js';
 import { earnedCount, totalLevels } from './badge-defs.js';
+import { avatar } from '../ui/avatar.js';
+import { uploadButton } from './photo-ui.js';
+
+/** Phase 18b: the profile picture (tap → the player's photos), „Profilbild ändern“ for the player themselves. */
+function faceBlock(ctx, id) {
+  const ph = ctx.photos;
+  if (!ph?.on) return null;
+  const own = ph.canSetAvatar(id), has = !!ph.avatar(id);
+  const games = new Set(ctx.baseModel.dataset.games.filter(g => g.winners.includes(id) || g.losers.includes(id)).map(g => g.ref));
+  const n = ph.all('spiel').filter(p => games.has(p.ref)).length + ph.list('spieler', id).length;
+  const face = ph.faces ? avatar(ctx, id, { size: 72 }) : null;
+  const deviceOnly = ctx.me.id === id && ctx.me.source === 'device' && !own;
+  if (!face && !own && !n) return null;
+  return h('div', { class: 'profile-face' },
+    face && n ? h('a', { class: 'face-link', 'aria-label': 'Fotos ansehen', ...linkTo(ctx, 'fotos', { spieler: id }) }, face) : face,
+    h('div', { class: 'profile-face-actions' },
+      n ? h('a', { class: 'tap more-link', ...linkTo(ctx, 'fotos', { spieler: id }) }, `${n} ${n === 1 ? 'Foto' : 'Fotos'}`) : null,
+      own ? uploadButton(ctx, { kind: 'spieler', ref: id, square: true, label: has ? 'Profilbild ändern' : 'Profilbild hinzufügen' }) : null,
+      deviceOnly && ph.canUpload ? h('p', { class: 'muted small' }, 'Ein Profilbild kann nur setzen, wessen Google-Konto im Tab „players“ eingetragen ist. Bitte die Verwaltung bitten, es einzutragen.') : null));
+}
 
 export default {
   id: 'player',
@@ -45,7 +65,8 @@ export default {
         h('div', { class: 'toolbar' },
           h('label', { for: 'pick-player' }, 'Spieler'),
           h('select', { id: 'pick-player', onchange: e => c.setParams({ id: e.target.value }) },
-            byName(c, [...new Set([...candidates, k])]).map(j => h('option', { value: elo.ids[j], selected: j === k ? true : null }, nameOf(c, j))))));
+            byName(c, [...new Set([...candidates, k])]).map(j => h('option', { value: elo.ids[j], selected: j === k ? true : null }, nameOf(c, j))))),
+        faceBlock(c, elo.ids[k]));
 
       render(tiles, figures(c, k));
 

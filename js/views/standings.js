@@ -7,6 +7,7 @@ import * as fmt from '../ui/format.js';
 import { viewHead, linkTo } from './common.js';
 import { ratingAfter } from '../core/elo.js';
 import { shareButton } from '../ui/share.js';
+import { avatar } from '../ui/avatar.js';
 
 export default {
   id: 'rangliste',
@@ -65,7 +66,7 @@ function page(ctx) {
     if (!r.provisional) rank++;
     return h('tr', { class: 'tap-row' + (r.provisional ? ' provisional' : '') + (r.id === ctx.me?.id ? ' me' : ''), onclick: () => ctx.navigate('player', { id: r.id }) },
       h('td', { class: 'rank' }, r.provisional ? '' : String(rank)),
-      h('td', { class: 'name' }, h('span', { class: 'player' }, ctx.names.get(r.id) ?? r.id),
+      h('td', { class: 'name' }, h('span', { class: 'player' }, avatar(ctx, r.id, { size: 28 }), ctx.names.get(r.id) ?? r.id),
         r.provisional ? h('span', { class: 'sub' }, `vorläufig: ${r.total} von ${ctx.filters.minGames} Spielen`) : null),
       h('td', { class: 'num score' }, fmt.elo(r.rating)),
       h('td', { class: 'num delta ' + (r.delta > 0.5 ? 'up' : r.delta < -0.5 ? 'down' : '') }, r.games || !w ? fmt.signed(r.delta) : '–'),

@@ -35,12 +35,23 @@ export function playerSpec(ctx, id) {
   return {
     kicker: 'Spielerprofil' + WERTUNG[ctx.mode],
     title: nameOf(ctx, id),
+    avatar: faceOf(ctx, id),
     big: fmt.elo(elo.final[k]), bigLabel: 'Elo-Wert',
     sub: [pl ? `Platz ${pl.pos} von ${pl.of}` : null, `${elo.wins[k]} Siege, ${elo.losses[k]} Niederlagen`, `Siegquote ${fmt.pct(elo.wins[k] / elo.played[k])}`].filter(Boolean).join(' · '),
     spark, sparkLabels: [`seit ${fmt.date(t0)}`, 'heute'],
     medals: p ? p.earned.slice(-5).reverse().map(e => medalSpec(cfg, e)) : [],
     lines: partners.length ? [{ label: 'Bester Doppelpartner', value: `${nameOf(ctx, partners[0].pid)} · ${partners[0].wins} : ${partners[0].games - partners[0].wins}` }] : [],
   };
+}
+
+/** Phase 18b: loaders for the images on share cards (null without photos). */
+function faceOf(ctx, id) {
+  const p = ctx.photos?.faces ? ctx.photos.avatar(id) : null;
+  return p ? () => ctx.photos.load(p.id, 'thumb') : null;
+}
+function gamePhoto(ctx, ref) {
+  const p = ctx.photos?.on ? ctx.photos.list('spiel', ref)[0] : null;
+  return p ? () => ctx.photos.load(p.id, 'full') : null;
 }
 
 export function gameSpec(ctx, g) {
@@ -50,6 +61,7 @@ export function gameSpec(ctx, g) {
   return {
     kicker: `${x.double ? 'Doppel' : 'Einzel'} · ${x.approxTime ? `ca. ${fmt.date(x.t)}` : `${fmt.date(x.t)}, ${fmt.time(x.t)} Uhr`}${WERTUNG[ctx.mode]}`,
     title: `${W} ${x.winners.length > 1 ? 'schlagen' : 'schlägt'} ${L}`,
+    photo: gamePhoto(ctx, x.ref),
     big: fmt.pct(f.eW), bigLabel: `Siegchance vor dem Spiel${f.eW < 0.5 ? ': eine Überraschung' : ''}`,
     lines: f.players.map(p => ({ label: nameOf(ctx, p.id), value: `${fmt.elo(p.before)} → ${fmt.elo(p.after)}  ${fmt.signed(p.delta)}`, tone: p.delta > 0 ? 'up' : 'down' })),
   };
@@ -69,6 +81,7 @@ export function collectionSpec(ctx, id) {
   return {
     kicker: 'Abzeichen',
     title: nameOf(ctx, id),
+    avatar: faceOf(ctx, id),
     big: String(earnedCount(p)), bigLabel: `von ${totalLevels(A)} Stufen`,
     medals: p.earned.slice(-10).reverse().map(e => medalSpec(cfg, e)),
     lines: p.earned.slice(-3).reverse().map(e => ({ label: badgeLabel(cfg, e.badge, e.level), value: fmt.date(e.t) })),

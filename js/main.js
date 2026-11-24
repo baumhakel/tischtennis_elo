@@ -11,6 +11,10 @@ import { parseHash, formatHash } from './app/url.js';
 import { createPipeline } from './app/pipeline.js';
 import { createAfterEntry } from './app/after-entry.js';
 import { createSubmit, formTransport, demoTransport } from './app/submit.js';
+import { createPhotos } from './app/photos.js';
+import { photoClient } from './io/photos.js';
+import { readPhotos, writePhoto, deletePhotos, prunePhotos } from './io/photo-cache.js';
+import { demoPhotoClient } from './io/demo-photos.js';
 import { createInstall } from './app/install.js';
 import { createUsage } from './app/usage.js';
 import { createRouter } from './app/router.js';
@@ -52,6 +56,16 @@ const usage = createUsage({ storage, version: APP_VERSION, onChange: u => store.
 const afterEntry = createAfterEntry({ store, refresh: () => pipeline.refresh(), hasToken: () => !!auth.getToken() });
 // entering in the app (Phase 18a): results and reports as form responses, Verwaltung via the pre-filled form
 const submit = createSubmit({ store, afterEntry, storage, transport: demo ? demoTransport(demoBox) : formTransport() });
+// photos (Phase 18b): the web app of Fotos.gs (demo: drawn in the browser), images cached forever on the device
+const currentDataset = () => store.get().data.model?.dataset || null;
+const photos = createPhotos({
+  store, storage, nowSerial: now, refresh: () => pipeline.refresh(),
+  client: demo ? demoPhotoClient(demoBox, currentDataset)
+    : photoClient({ url: () => currentDataset()?.config.photos_url, token: () => auth.getToken() }),
+  cache: demo
+    ? (() => { const m = new Map(); return { read: async ks => new Map(ks.filter(k => m.has(k)).map(k => [k, m.get(k)])), write: async (k, b) => { m.set(k, b); }, remove: async ks => ks.forEach(k => m.delete(k)), prune: async () => 0 }; })()
+    : { read: readPhotos, write: writePhoto, remove: deletePhotos, prune: prunePhotos },
+});
 
 const actions = {
   /** filters (optional): patch of the global filters, e.g. { focus: [...] } to highlight players. */
@@ -80,6 +94,16 @@ const actions = {
   managementUrl: (action, fields) => submit.managementUrl(action, fields),
   managementOpened: (action, fields) => submit.managementOpened(action, fields),
   managementDemo: (action, fields) => submit.managementDemo(action, fields),
+  uploadPhoto: o => photos.upload(o),
+  /** A short message in the notice above the bottom bar (photos uploaded, deleted …). */
+  notify(text) {
+    const notice = { kind: 'sent', text };
+    store.set({ notice });
+    setTimeout(() => { if (store.get().notice === notice) store.set({ notice: null }); }, 6000);
+  },
+  removePhoto: id => photos.remove(id),
+  setFaces: on => photos.setFaces(on),
+  facesOn: () => photos.faces(),
   noticeRetry: () => afterEntry.retry(),
   noticeDismiss: () => afterEntry.dismiss(),
   signOut() { auth.signOut(); store.set({ data: { needsSignIn: true } }); },
@@ -118,6 +142,7 @@ const router = createRouter({
       state, model, baseModel: base, fullModel: full, mode: filters.mode, filters, params: state.params, now: t, names,
       window: range ? { ...range, empty: model.dataset.games.length === 0 } : null,
       visible: vis, me, fresh: new Set(state.fresh || []),
+      photos: photos.view(base.dataset, state),             // Phase 18b: photos and faces (app/photos.js)
       focus: resolveFocus(filters, model.elo, vis, model.dataset.config, me.id),
       navigate: actions.navigate, setParams: actions.setParams, setFilters: actions.setFilters, actions,
     };
@@ -157,6 +182,11 @@ store.subscribe((s, prev) => {
       markSeen();
     });
   } else if (s.me !== prev.me || s.auth.email !== prev.auth.email) markSeen();
+  // photos: every profile picture in one go after the data is shown, and the device cache kept in size
+  if (s.data.model && s.data.model !== prev.data.model) {
+    const ds = s.data.model.dataset;
+    (window.requestIdleCallback || (fn => setTimeout(fn, 200)))(() => { photos.prefetchAvatars(ds); photos.prune(ds); });
+  }
   // Prognose of the current mode, in a worker (app/forecast.js); also after a mode change
   if (s.data.model && (s.data.model !== prev.data.model || s.filters.mode !== prev.filters.mode)) {
     const base = s.data.model;

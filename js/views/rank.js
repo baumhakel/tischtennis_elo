@@ -1,5 +1,6 @@
 // Rangverlauf: rank after every game (bump chart). Only players with at least the min-games
 // number of games at that time are ranked, so newcomers enter the chart once they qualify.
+import { chartFace } from '../ui/avatar.js';
 import { h, render } from '../ui/dom.js';
 import { seriesColor, css } from '../ui/colors.js';
 import { rankSeries } from '../ui/series.js';
@@ -27,7 +28,7 @@ export default {
         series: ks.map((k, i) => {
           const slot = c.focus.slotOf.get(k);
           return { label: nameOf(c, k), values: ys[i], stepped: true, context: slot == null,
-            color: slot == null ? ctxColor : seriesColor(slot), width: slot == null ? 1 : 2.5 };
+            color: slot == null ? ctxColor : seriesColor(slot), width: slot == null ? 1 : 2.5, face: slot == null ? null : chartFace(c, c.model.elo.ids[k]) };
         }),
       };
       if (!chart) chart = lineChart(chartEl, spec); else chart.update(spec);

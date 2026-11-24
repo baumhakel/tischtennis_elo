@@ -1,6 +1,8 @@
 // Sheets API access: one batchGet for all tabs the loader needs. Side effect: network.
 
-import { TABS, FETCH_TIMEOUT_MS } from '../config.js';
+import { TABS, OPTIONAL_TABS, FETCH_TIMEOUT_MS } from '../config.js';
+
+let skipOptional = false;   // an optional tab was missing once: don't ask for optional tabs again in this session
 
 export class SheetsError extends Error {
   /**
@@ -16,7 +18,19 @@ export class SheetsError extends Error {
  * @returns {Promise<import('../types.js').RawSheets>}
  */
 export async function batchGet({ token, spreadsheetId, fetchImpl = fetch, timeoutMs = FETCH_TIMEOUT_MS }) {
-  const keys = Object.keys(TABS);
+  try {
+    return await read({ token, spreadsheetId, fetchImpl, timeoutMs, skip: skipOptional });
+  } catch (e) {
+    // a missing optional tab (e.g. „fotos“ before setupFotos) makes the whole request fail: read without them
+    if (e?.kind !== 'bad_range' || skipOptional) throw e;
+    const raw = await read({ token, spreadsheetId, fetchImpl, timeoutMs, skip: true });
+    skipOptional = true;
+    return raw;
+  }
+}
+
+async function read({ token, spreadsheetId, fetchImpl, timeoutMs, skip }) {
+  const keys = Object.keys(TABS).filter(k => !(skip && OPTIONAL_TABS.includes(k)));
   const params = new URLSearchParams({
     valueRenderOption: 'UNFORMATTED_VALUE',
     dateTimeRenderOption: 'SERIAL_NUMBER',
@@ -54,5 +68,6 @@ export async function batchGet({ token, spreadsheetId, fetchImpl = fetch, timeou
   const body = await res.json();
   const raw = {};
   keys.forEach((k, i) => { raw[k] = body.valueRanges?.[i]?.values || []; });
+  for (const k of OPTIONAL_TABS) if (!(k in raw)) raw[k] = [];
   return raw;
 }

@@ -38,7 +38,7 @@ function page(ctx) {
     scatter({
       ariaLabel: 'Streudiagramm: Elo im Einzel gegen Elo im Doppel, standardisiert',
       xLabel: 'Einzel (z-Wert)', yLabel: 'Doppel (z-Wert)', diagonalLabel: 'gleich stark',
-      points: rows.map(r => ({ x: r.zsingle, y: r.zdouble, label: name(r.id), title: `${name(r.id)}: Einzel ${fmt.elo(r.single)}, Doppel ${fmt.elo(r.double)}`, highlight: r.id === ctx.me?.id, ...link(r.id) })),
+      points: rows.map(r => ({ x: r.zsingle, y: r.zdouble, label: name(r.id), title: `${name(r.id)}: Einzel ${fmt.elo(r.single)}, Doppel ${fmt.elo(r.double)}`, highlight: r.id === ctx.me?.id, face: ctx.photos?.faces ? ctx.photos.avatarUrl(r.id) : null, ...link(r.id) })),
     }),
     h('p', { class: 'chart-note' }, `Am meisten Doppelspezialist: ${name(top.id)} (${z(top.score)}). Am meisten Einzelspezialist: ${name(bottom.id)} (${z(bottom.score)}).`),
     tableView('Tabelle anzeigen', ['Spieler', 'Einzel', 'Doppel', 'Spezialist'],

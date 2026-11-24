@@ -10,12 +10,20 @@ import { earnedInGame } from './badges.js';
 import { shareButton } from '../ui/share.js';
 import { gameSpec } from './share-cards.js';
 import { formReady } from '../app/forms.js';
+import { photoStrip, openUpload } from './photo-ui.js';
 
 export default {
   id: 'spiel',
   title: 'Spiel',
   mount(el, ctx) {
-    const update = c => render(el, page(c));
+    const update = c => {
+      render(el, page(c));
+      // „Foto“ in the notice after a result arrived: open the upload sheet once (Phase 18b)
+      if (c.params.foto === '1' && c.photos?.canUpload && c.params.ref) {
+        c.setParams({ foto: undefined });
+        openUpload(c, { kind: 'spiel', ref: c.params.ref });
+      }
+    };
     update(ctx);
     return { update, unmount() {} };
   },
@@ -70,6 +78,7 @@ function page(ctx) {
       ' hat dieselben Spieler und dasselbe Ergebnis. War es nur ein Spiel, bitte eines davon streichen lassen.') : null,
     h('p', { class: 'lead' }, `${team(x.winners)} ${x.double ? 'schlagen' : 'schlägt'} ${team(x.losers)}.`),
     h('div', { class: 'sides' }, side('Gewonnen', W, 'win'), side('Verloren', L, 'loss')),
+    photoStrip(ctx, 'spiel', x.ref),
     ctx.badges ? earnedInGame(ctx, ctx.badges, ctx.mode === 'alle' ? g : findGame(ctx.baseModel.dataset, x.ref)) : null,
     h('div', { class: 'tiles' },
       tile({ label: 'Siegchance vorher', value: fmt.pct(f.eW), sub: `für ${team(x.winners)}` }),

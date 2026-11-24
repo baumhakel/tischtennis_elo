@@ -49,7 +49,8 @@ export default {
       try {
         await drawGraph(box, {
           key: `${c.model.dataset.hash}|${metric.id}|${ks.slice().sort((a, b) => a - b).join(',')}`,
-          nodes: ks.map(k => ({ k, label: nameOf(c, k), color: c.focus.slotOf.has(k) ? seriesColor(c.focus.slotOf.get(k)) : css('--axis') })),
+          nodes: ks.map(k => ({ k, label: nameOf(c, k), color: c.focus.slotOf.has(k) ? seriesColor(c.focus.slotOf.get(k)) : css('--axis'),
+            face: c.photos?.faces ? c.photos.avatarUrl(c.model.elo.ids[k]) : null })),
           // attraction from the selected metric; for signed metrics only positive links pull
           layoutLinks: shown.filter(e => metric.graph !== 'signed' || e.sign > 0),
           edges: shown,

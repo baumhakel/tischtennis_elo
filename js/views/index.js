@@ -34,6 +34,7 @@ export const VIEWS = [
   { id: 'eintragen',   title: 'Ergebnis eintragen', menu: false, load: () => import('./enter.js') },     // Phase 18a: Mitmachen
   { id: 'melden',      title: 'Problem melden',   menu: false, load: () => import('./report.js') },
   { id: 'verwalten',   title: 'Spieler verwalten', menu: false, load: () => import('./manage.js') },
+  { id: 'fotos',       title: 'Fotos',                          load: () => import('./photos.js') },   // Phase 18b
   { id: 'entdecken',   title: 'Entdecken',                    load: () => import('./entdecken.js') },
   { id: 'more',        title: 'Entdecken',        menu: false, load: () => import('./entdecken.js') },   // old links
 ];

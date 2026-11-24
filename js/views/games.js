@@ -7,6 +7,7 @@ import { h } from '../ui/dom.js';
 import * as fmt from '../ui/format.js';
 import { gameFacts, lastGames } from './game-query.js';
 import { linkTo } from './common.js';
+import { faces } from '../ui/avatar.js';
 
 export { linkTo };
 
@@ -36,9 +37,10 @@ export function gameRow(ctx, g, { as = null } = {}) {
   return h('li', ctx.fresh?.has(x.ref) ? { class: 'fresh' } : {},
     h('a', { class: 'game tap' + (mark ? '' : ' neutral'), ...gameLink(ctx, g) },
       mark,
-      h('span', { class: 'who' }, who),
+      h('span', { class: 'who' }, faces(ctx, f.as ? f.opponents : x.winners, { size: 20 }), who),
       delta,
-      h('span', { class: 'meta' }, meta)));
+      h('span', { class: 'meta' }, meta,
+        ctx.photos?.on && ctx.photos.has('spiel', x.ref) ? h('span', { class: 'cam', role: 'img', 'aria-label': 'mit Foto' }) : null)));
 }
 
 export function gameList(ctx, gs, opts = {}) {

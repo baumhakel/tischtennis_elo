@@ -13,6 +13,7 @@
 //   xLabel?: (x) => string,             tooltip heading for an x value
 //   xFmt?: (x) => string, xRange?: [min, max]   numeric x axis labels / fixed range
 //   series[].points: draw point markers (calibration)
+//   series[].face: { img, text } a face at the end of the line (Phase 18b): the image, or the initials
 // }
 import uPlot from '../../vendor/uPlot.esm.js';
 import { chrome, onThemeChange } from '../colors.js';
@@ -80,8 +81,54 @@ function options(spec, width) {
     bands: (spec.bands || []).map(b => ({ series: [b.upper + 1, b.lower + 1], fill: b.color })),
     hooks: {
       setCursor: [u => tooltip(u, spec)],
+      draw: spec.series.some(s => s.face) ? [u => drawFaces(u, spec)] : [],
     },
   };
+}
+
+/**
+ * Faces at the last point of each line that has one (Phase 18b). Pushed apart vertically when two would overlap,
+ * kept inside the plot. The ring has the line's colour, so face and line belong together.
+ */
+function drawFaces(u, spec) {
+  const px = uPlot.pxRatio || 1, r = 11 * px;
+  const { left, top, width, height } = u.bbox;
+  const ends = [];
+  spec.series.forEach((s, j) => {
+    if (!s.face) return;
+    let i = s.values.length - 1;
+    while (i >= 0 && s.values[i] == null) i--;
+    if (i < 0) return;
+    const x = Math.min(left + width - r - px, Math.max(left + r, u.valToPos(spec.x[i], 'x', true)));
+    const y = u.valToPos(s.values[i], 'y', true);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    ends.push({ s, x, y });
+  });
+  ends.sort((a, b) => a.y - b.y);
+  for (let k = 1; k < ends.length; k++) {
+    const a = ends[k - 1], b = ends[k];
+    if (Math.abs(a.x - b.x) < 2 * r && b.y - a.y < 2 * r + px) b.y = a.y + 2 * r + px;
+  }
+  const over = ends.length ? ends.at(-1).y + r - (top + height) : 0;
+  if (over > 0) ends.forEach(e => { e.y -= over; });
+  const g = u.ctx, c = chrome();
+  g.save();
+  for (const { s, x, y } of ends) {
+    g.save();
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.closePath();
+    g.fillStyle = c.surface || '#fff'; g.fill();
+    g.clip();
+    if (s.face.img?.complete && s.face.img.naturalWidth) g.drawImage(s.face.img, x - r, y - r, 2 * r, 2 * r);
+    else {
+      g.fillStyle = c.muted; g.font = `600 ${Math.round(10 * px)}px system-ui, sans-serif`;
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(s.face.text, x, y + px);
+    }
+    g.restore();
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2);
+    g.lineWidth = 2 * px; g.strokeStyle = s.color; g.stroke();
+  }
+  g.restore();
 }
 
 /** Value of a gappy series at index i, linearly between its nearest values (null outside its range). */

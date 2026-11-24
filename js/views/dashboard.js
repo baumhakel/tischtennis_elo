@@ -14,6 +14,7 @@ import { boardSpec } from './share-cards.js';
 import { reviewSeason } from './review-logic.js';
 import { forecastTeaser, chance } from './forecast-logic.js';
 import { formReady } from '../app/forms.js';
+import { avatar, chartFace } from '../ui/avatar.js';
 
 export default {
   id: 'dashboard',
@@ -131,7 +132,7 @@ function meCard(ctx) {
   }
   const streakText = streak > 1 ? `${streak} Siege in Folge` : streak < -1 ? `${-streak} Niederlagen in Folge` : streak > 0 ? 'zuletzt gewonnen' : streak < 0 ? 'zuletzt verloren' : null;
   return h('a', { class: 'me-card tap', ...link },
-    h('span', { class: 'me-top' }, h('span', { class: 'me-name' }, name), h('span', { class: 'me-elo' }, fmt.elo(rating))),
+    h('span', { class: 'me-top' }, h('span', { class: 'me-name' }, avatar(ctx, id, { size: 40 }), name), h('span', { class: 'me-elo' }, fmt.elo(rating))),
     h('span', { class: 'me-line' }, line),
     sub ? h('span', { class: 'me-sub' }, sub) : null,
     streakText ? h('span', { class: 'me-sub' }, streakText) : null);
@@ -204,7 +205,7 @@ function curves(ctx) {
   const series = ks.map((k, i) => {
     const slot = focus.slotOf.get(k);
     return { label: nameOf(ctx, k), values: ys[i], stepped: true, context: slot == null,
-      color: slot == null ? ctxColor : seriesColor(slot), width: slot == null ? 1 : 2 };
+      color: slot == null ? ctxColor : seriesColor(slot), width: slot == null ? 1 : 2, face: slot == null ? null : chartFace(ctx, model.elo.ids[k]) };
   });
   const N = model.dataset.games.length;
   return {
@@ -233,7 +234,9 @@ function leaderboard(ctx) {
       h('td', { class: 'rank' }, prov ? '' : String(rank)),
       h('td', { class: 'name' },
         h('span', { class: 'player' },
-          slot != null ? h('span', { class: 'fkey', style: `background:${seriesVar(slot)}` }) : null,
+          // Phase 18b: the face, its ring in the highlight colour; without faces the colour key as before
+          avatar(ctx, r.id, { size: 28, ring: slot != null ? seriesVar(slot) : null })
+            || (slot != null ? h('span', { class: 'fkey', style: `background:${seriesVar(slot)}` }) : null),
           names.get(r.id)),
         h('span', { class: 'sub' },
           prov ? `vorläufig: ${r.games} von ${filters.minGames} Spielen` : formStrip(r.last))),

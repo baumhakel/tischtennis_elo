@@ -126,6 +126,11 @@ export const CONFIG_DEFAULTS = {
   form_management_page_deactivate: { type: 'integer', value: null, min: 1, optional: true },
   form_management_page_merge:    { type: 'integer', value: null, min: 1, optional: true },
   form_management_page_accounts: { type: 'integer', value: null, min: 1, optional: true },
+  // Phase 18c: the Verwaltung section „Turnier“ (added by setupTurnier, IDs by writeFormIds)
+  form_management_entry_tournament: { type: 'string', value: '', optional: true },   // … „Turnier-ID“
+  form_management_entry_step:    { type: 'string',  value: '', optional: true },   // … „Schritt“
+  form_management_entry_draw:    { type: 'string',  value: '', optional: true },   // … „Auslosung“
+  form_management_page_turnier:  { type: 'integer', value: null, min: 1, optional: true },
   // e-mail addresses (comma-separated) that see „Spieler verwalten“ in the app. Only hides the pages: the form's sharing protects it
   management_accounts:           { type: 'names',   value: null, optional: true },
   // Phase 18b: photos. photos_url = the web app of Fotos.gs (only in the sheet). optional: empty = no photos anywhere
@@ -149,6 +154,8 @@ export const CONFIG_DEFAULTS = {
   form_tournament_entry_set7:    { type: 'string',  value: '', optional: true },
   tournament_suggestions:        { type: 'integer', value: 3,  min: 1, max: 8 },   // „Als Nächstes“ on the tournament page
   tournament_game_minutes:       { type: 'integer', value: 12, min: 3 },           // time estimate until enough results are in
+  tournament_card_days:          { type: 'integer', value: 7, min: 0, max: 60 },    // Phase 18c: Übersicht card with the winner, days after the end
+  qr_style:                      { type: 'string',  value: 'rund' },               // Phase 18c: QR codes: rund · punkte · eckig
   // Phase 17: usage counting (app/usage.js) via the hidden „Nutzung“ form. optional: empty = no counting
   form_usage_url:                { type: 'url',     value: '', optional: true },
   form_usage_entry_device:       { type: 'string',  value: '', optional: true },

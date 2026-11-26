@@ -225,11 +225,13 @@ test('loader: member games of a tournament count for Elo, a void correction drop
 test('visible tournaments, answers for the form, arrival check', () => {
   const ds = load(demoRaw('Europe/Vienna', 'turnier'));
   const v = visibleTournaments(ds);
-  assert.equal(v.active.id, 'advent');
-  assert.deepEqual(v.list.map(t => t.id), ['advent', 'herbst']);
-  assert.equal(visibleTournaments({ tournaments: [{ ...v.active, status: 'test' }] }).active, null);
-  assert.equal(visibleTournaments({ tournaments: [{ ...v.active, status: 'test' }] }, true).active.id, 'advent');
-  const A = v.active, m = A.matches.find(x => x.status === 'offen');
+  assert.deepEqual(v.actives.map(t => t.id).sort(), ['advent', 'adventdoppel']);     // two at once (Phase 18c)
+  assert.deepEqual(v.announced.map(t => t.id), ['weihnachten']);
+  assert.deepEqual(v.list.map(t => t.id).sort(), ['advent', 'adventdoppel', 'herbst', 'weihnachten']);
+  const A = v.list.find(t => t.id === 'advent');
+  assert.equal(visibleTournaments({ tournaments: [{ ...A, status: 'test' }] }).active, null);
+  assert.equal(visibleTournaments({ tournaments: [{ ...A, status: 'test' }] }, true).active.id, 'advent');
+  const m = A.matches.find(x => x.status === 'offen');
   const ans = tournamentAnswers('advent', m, [[11, 7], [11, 9]]);
   assert.deepEqual([ans.match, ans.set1, ans.set2, ans.set3], [String(m.nr), '11:7', '11:9', undefined]);
   const before = new Set(A.entries.map(e => e.row));

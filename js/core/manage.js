@@ -84,6 +84,7 @@ export function doneText(action, f) {
     case 'deactivate': return `${clean(f.active_player)} ist jetzt inaktiv`;
     case 'merge': return `${clean(f.merge_from)} ist mit ${clean(f.merge_into)} zusammengeführt`;
     case 'accounts': return splitAccounts(f.account).length ? `Google-Konto von ${clean(f.account_player)} geändert` : `Google-Konto von ${clean(f.account_player)} entfernt`;
+    case 'turnier': return f.doneText || 'Turnier geändert';
     default: return 'Geändert';
   }
 }
@@ -113,6 +114,12 @@ const REASONS = [
   [/^no change$/, () => 'Es hat sich nichts geändert.'],
   [/^submitter not in ALLOWED_EMAILS$/, () => 'Dieses Google-Konto darf nichts ändern.'],
   [/^unknown action/, () => 'Unbekannte Aktion.'],
+  // Phase 18c: the Verwaltung action „Turnier“ (Turnier.gs)
+  [/^unknown tournament "(.*)"$/, m => `Das Turnier „${m[1]}“ gibt es nicht.`],
+  [/^unknown step "(.*)"$/, m => `Unbekannter Schritt „${m[1]}“.`],
+  [/^cannot (\S+) a tournament with status "(.*)"$/, m => `Das geht nicht bei einem Turnier mit Status „${m[2]}“.`],
+  [/^draw missing$/, () => 'Die Auslosung fehlt.'],
+  [/^draw changed: (.*)$/, m => `Die Teilnehmerliste hat sich inzwischen geändert (${m[1]}). Bitte die Seite neu laden und noch einmal starten.`],
 ];
 
 /** „refused: name "Bernd" already in use (p002)“ → „Den Namen „Bernd“ gibt es schon.“ */

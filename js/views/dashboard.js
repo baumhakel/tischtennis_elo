@@ -15,6 +15,7 @@ import { reviewSeason } from './review-logic.js';
 import { forecastTeaser, chance } from './forecast-logic.js';
 import { formReady } from '../app/forms.js';
 import { avatar, chartFace } from '../ui/avatar.js';
+import { tournamentCards } from './tournament-ui.js';
 
 export default {
   id: 'dashboard',
@@ -32,7 +33,7 @@ export default {
     let chart = null;
 
     function update(c) {
-      render(meBox, c.me.ask ? askCard(c) : c.me.id ? [meCard(c), meBadge(c)] : null, reviewTeaser(c));
+      render(meBox, tournamentCards(c), c.me.ask ? askCard(c) : c.me.id ? [meCard(c), meBadge(c)] : null, reviewTeaser(c));   // Phase 18c: tournament card
       render(tiles, highlights(c));
       render(legend, focusLegend(c));
       const spec = curves(c);

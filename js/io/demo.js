@@ -93,28 +93,47 @@ export function demoRaw(timeZone, size = 'klein') {
 }
 
 // Phase 18: made-up tournaments. „herbst“: a month ago, finished (9 members and two guests, three uneven groups,
-// two per group into the knockout, so with byes). „advent“ (?demo=turnier): today, a third of the matches played.
-// Results are played out with the real core (load), so the match numbers are the ones the app shows.
+// two per group into the knockout, so with byes). With ?demo=turnier (Phase 18c) three more: „advent“ today
+// (singles, groups, a third played) and „adventdoppel“ today (doubles teams, Swiss system, a few rounds played) at
+// the same time, and „weihnachten“ in a few weeks, announced, with a pot draw (to try the draw and „Turnier
+// starten“). Results are played out with the real core (load), so the match numbers are the ones the app shows.
+export const TOURNAMENT_HEADER = ['id', 'name', 'datum', 'status', 'art', 'gruppen', 'gruppengroessen', 'weiter_pro_gruppe', 'saetze', 'punkte_pro_satz',
+  'spiel_um_platz_3', 'tische', 'setzstichtag', 'los', 'siegerfoto', 'modus', 'auslosung', 'setzwertung', 'swiss_siege', 'swiss_niederlagen',
+  'swiss_runde1', 'ko_teilnehmer', 'gestartet'];
 function demoTournaments(raw, { now, rnd, skill, names, live, foto }) {
-  const guests = { Paul: 120, Sophie: 260 };
-  const strength = n => guests[n] ?? skill(n);
-  raw.turniere = [['id', 'name', 'datum', 'status', 'art', 'gruppen', 'gruppengroessen', 'weiter_pro_gruppe', 'saetze', 'punkte_pro_satz', 'spiel_um_platz_3', 'tische', 'setzstichtag', 'los', 'siegerfoto']];
+  const guests = { Paul: 120, Sophie: 260, Max: 200, Lea: 180 };
+  const strength = n => String(n).split(' / ').reduce((s, x) => s + (guests[x] ?? skill(x)), 0) / String(n).split(' / ').length;
+  raw.turniere = [TOURNAMENT_HEADER.slice()];
   raw.turnier_teilnehmer = [['turnier_id', 'name', 'setzplatz', 'gruppe', 'name_2']];
   raw.turnier_ergebnisse = [['Zeitstempel', 'Turnier', 'Spiel-Nr.', 'Begegnung', 'Satz 1', 'Satz 2', 'Satz 3', 'Satz 4', 'Satz 5', 'Satz 6', 'Satz 7']];
   let day = now - 30;
   while (((day - 2) % 7 + 7) % 7 > 4) day--;                          // a weekday
-  const plan = [{ id: 'herbst', name: 'Herbstturnier', day, status: 'beendet', groups: 3, players: [...names.slice(0, 9), 'Paul', 'Sophie'], share: 1 }];
-  if (live) plan.push({ id: 'advent', name: 'Adventturnier', day: now, status: 'aktiv', groups: 2, players: [...names.slice(0, 9), 'Paul'], share: 0.35 });
-  for (const T of plan) {
-    raw.turniere.push([T.id, T.name, T.day, T.status, 'einzel', T.groups, '', '2', 'Gruppe 3, Halbfinale 5, Spiel um Platz 3 5, Finale 5', 11, 'ja', 2, T.day, 1, '']);
-    for (const n of T.players) raw.turnier_teilnehmer.push([T.id, n, '', '', '']);
+  const groupsRow = (T, saetze) => [T.id, T.name, T.day, T.status, T.art || 'einzel', T.groups || 1, '', '2', saetze, 11, 'ja', 2, T.seedAt ?? T.day, 1, '',
+    T.mode || 'gruppen', T.draw || 'schlange', '', 3, 3, T.r1 || '', T.ko || '', ''];
+  const plan = [{ id: 'herbst', name: 'Herbstturnier', day, status: 'beendet', groups: 3, players: [...names.slice(0, 9), 'Paul', 'Sophie'], share: 1,
+    saetze: 'Gruppe 3, Halbfinale 5, Spiel um Platz 3 5, Finale 5' }];
+  if (live) {
+    plan.push({ id: 'advent', name: 'Adventturnier', day: now, status: 'aktiv', groups: 2, players: [...names.slice(0, 9), 'Paul'], share: 0.35,
+      saetze: 'Gruppe 3, Halbfinale 5, Spiel um Platz 3 5, Finale 5' });
+    const teams = [['Anna', 'Lukas'], ['Bernd', 'Kira'], ['Clara', 'Jonas'], ['David', 'Ida'], ['Elif', 'Hannes'], ['Felix', 'Greta'], ['Paul', 'Sophie'], ['Max', 'Lea']]
+      .filter(t => t.every(n => names.includes(n) || n in guests));
+    plan.push({ id: 'adventdoppel', name: 'Advent-Doppel', day: now, status: 'aktiv', art: 'doppel', mode: 'schweizer', r1: 'versetzt', teams, share: 0.45,
+      saetze: 'Schweizer 1, Entscheidung 3, Halbfinale 3, Spiel um Platz 3 3, Finale 3' });
+    plan.push({ id: 'weihnachten', name: 'Weihnachtsturnier', day: now + 25, seedAt: now + 25, status: 'angekündigt', groups: 3, draw: 'toepfe',
+      players: [...names.slice(0, 12), 'Max'], share: 0, saetze: 'Gruppe 3, Viertelfinale 5, Halbfinale 5, Spiel um Platz 3 5, Finale 7' });
   }
   for (const T of plan) {
+    raw.turniere.push(groupsRow(T, T.saetze));
+    if (T.teams) for (const [x, y] of T.teams) raw.turnier_teilnehmer.push([T.id, x, '', '', y]);
+    else for (const n of T.players) raw.turnier_teilnehmer.push([T.id, n, '', '', '']);
+  }
+  for (const T of plan) {
+    if (!T.share) continue;
     let t = T.day + 12 / 24, played = 0, state;
-    for (let round = 0; round < 40; round++) {
+    for (let round = 0; round < 60; round++) {
       state = load(raw).tournaments.find(x => x.id === T.id);
       const open = state.matches.filter(m => m.status === 'offen');
-      const goal = Math.round(state.total * T.share);
+      const goal = Math.round((state.mode === 'schweizer' ? state.maxTotal : state.total) * T.share);
       if (!open.length || played >= goal) break;
       for (const m of open.slice(0, goal - played)) {
         const p = 1 / (1 + 10 ** ((strength(m.b.name) - strength(m.a.name)) / 400));
@@ -161,6 +180,7 @@ const DEMO_IDS = Object.fromEntries([
   'management_entry_action', 'management_entry_new_player', 'management_entry_new_account', 'management_entry_old_name',
   'management_entry_new_name', 'management_entry_inactive_player', 'management_entry_active_player', 'management_entry_merge_from',
   'management_entry_merge_into', 'management_entry_account_player', 'management_entry_account',
+  'management_entry_tournament', 'management_entry_step', 'management_entry_draw',
   'tournament_entry_tournament', 'tournament_entry_match', 'tournament_entry_pairing', 'tournament_entry_set1', 'tournament_entry_set2',
   'tournament_entry_set3', 'tournament_entry_set4', 'tournament_entry_set5', 'tournament_entry_set6', 'tournament_entry_set7',
 ].map((k, i) => ['form_' + k, String(1000 + i)]));
@@ -215,6 +235,7 @@ export function demoForms(timeZone) {
 }
 
 function manageRaw(raw, { answers: { action, fields }, t }) {
+  if (action === 'turnier') { manageTournament(raw, fields, t); return; }
   const rows = raw.players.slice(1);
   const taken = new Set([...raw.aliases.slice(1).map(r => norm(r[0])), ...rows.map(r => norm(r[1]))]);
   const db = { players: rows.map(r => ({ id: r[0], name: r[1], active: r[2] !== false, accounts: r[3] ? String(r[3]).split(/,\s*/) : [] })), taken };
@@ -230,6 +251,47 @@ function manageRaw(raw, { answers: { action, fields }, t }) {
     for (const [from, into] of next.moves) for (const r of raw.aliases) if (r[1] === from) r[1] = into;
     raw.aliases.push(...next.aliases);
   }
+  raw.management_log.push(log);
+}
+
+/**
+ * Phase 18c: the Verwaltung action „Turnier“ like Turnier.gs: status changes; „starten“ checks the draw against
+ * the participant rows, writes setzplatz and gruppe, sets gestartet; „entwurf“ puts the values from before back.
+ */
+function manageTournament(raw, f, t) {
+  const H = raw.turniere[0], col = n => H.indexOf(n);
+  const row = raw.turniere.find((r, i) => i > 0 && r[0] === f.tournament);
+  const log = [t, 'turnier', f.tournament, row ? row[col('status')] : '', f.step, DEMO_EMAIL, 'ok'];
+  const refuse = why => { log[6] = `refused: ${why}`; raw.management_log.push(log); };
+  if (!row) return refuse(`unknown tournament "${f.tournament}"`);
+  const status = String(row[col('status')] || 'entwurf');
+  const P = raw.turnier_teilnehmer;
+  const allowed = { 'ankündigen': ['entwurf', 'test'], starten: ['angekündigt', 'test'], beenden: ['aktiv'], entwurf: ['test', 'angekündigt', 'aktiv', 'beendet'] }[f.step];
+  if (!allowed) return refuse(`unknown step "${f.step}"`);
+  if (!allowed.includes(status)) return refuse(`cannot ${f.step} a tournament with status "${status}"`);
+  if (f.step === 'starten') {
+    const lines = String(f.draw || '').split('\n').map(x => x.trim()).filter(Boolean).map(x => x.split('|'));
+    if (!lines.length) return refuse('draw missing');
+    for (const [r, , , n1, n2] of lines) {
+      const p = P[Number(r) - 1];
+      if (!p || p[0] !== f.tournament || norm(p[1]) !== norm(n1) || norm(p[4] || '') !== norm(n2 || '')) return refuse(`draw changed: row ${r}`);
+    }
+    const mine = P.map((p, i) => [p, i + 1]).filter(([p], i) => i > 0 && p[0] === f.tournament && p[1]);
+    if (mine.length !== lines.length) return refuse(`draw changed: ${mine.length} participants, draw has ${lines.length}`);
+    log[3] = `${status}; vorher: ${mine.map(([p, r]) => `${r}|${p[2] ?? ''}|${p[3] ?? ''}`).join(';')}`;
+    for (const [r, seed, group] of lines) { P[Number(r) - 1][2] = Number(seed); P[Number(r) - 1][3] = group; }
+    row[col('gestartet')] = t;
+    if (status !== 'test') row[col('status')] = 'aktiv';
+  } else if (f.step === 'entwurf') {
+    const start = raw.management_log.slice().reverse().find(l => l[1] === 'turnier' && l[2] === f.tournament && l[4] === 'starten' && l[6] === 'ok');
+    const before = start && /vorher: (.*)$/.exec(start[3]);
+    if (row[col('gestartet')] !== '' && before) for (const part of before[1].split(';')) {
+      const [r, seed, group] = part.split('|');
+      if (P[Number(r) - 1]) { P[Number(r) - 1][2] = seed; P[Number(r) - 1][3] = group; }
+    }
+    row[col('gestartet')] = '';
+    row[col('status')] = 'entwurf';
+  } else row[col('status')] = f.step === 'beenden' ? 'beendet' : 'angekündigt';
   raw.management_log.push(log);
 }
 

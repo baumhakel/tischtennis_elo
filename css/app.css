@@ -920,3 +920,36 @@ body.viewer-open { overflow: hidden; }
 .tt-check.ok { color: var(--up); font-weight: 600; }
 .tt-check.bad { color: var(--down); }
 .tt-vs-word { font: 500 16px var(--text); }
+
+/* Phase 18c: doubles teams, Swiss stage, pot draw, Übersicht card, management */
+.tt-team .tt-faces { display: inline-flex; }
+.tt-team .tt-faces .avatar + .avatar { margin-left: -6px; box-shadow: 0 0 0 2px var(--bg, #fff); border-radius: 50%; }
+.tt-team > span:not(.tt-guest):not(.tt-faces), .tt-team > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tt-sets.tt-wo { font: 600 13px var(--text); color: var(--muted); }
+.tt-swiss { grid-auto-columns: minmax(250px, 1fr); }
+.tt-pool { margin: 0 0 var(--s3); }
+.tt-pool h5 { margin: 0 0 4px; font: 600 14px var(--score); font-variant-numeric: tabular-nums; }
+.tt-pool h5 .muted { font: 400 12px var(--text); }
+.tt-through h5 { color: var(--up); }
+.tt-gone h5 { color: var(--muted); }
+.tt-swiss-names { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 14px; }
+.tt-draw { margin: var(--s3) 0 var(--s4); }
+.tt-pots { margin: 0 0 var(--s3); padding: 0; list-style: none; display: grid; gap: 6px; }
+.tt-pots li { display: grid; grid-template-columns: 4.5em 1fr; gap: var(--s2); color: var(--muted); }
+.tt-pots li.done { color: inherit; }
+.tt-pot-label { font-weight: 600; }
+.tt-draw-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--s3); margin-bottom: var(--s3); }
+.tt-draw-group { border: 1px solid var(--line); border-radius: 8px; padding: var(--s2) var(--s3); min-height: 120px; }
+.tt-draw-group h4 { margin: 0 0 var(--s1); font-size: 14px; }
+.tt-draw-group ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+.tt-draw-group li.fresh { animation: tt-in 0.6s ease-out; }
+@keyframes tt-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .tt-draw-group li.fresh { animation: none; } }
+.tt-cards { list-style: none; margin: 0 0 var(--s3); padding: 0; display: grid; gap: var(--s2); }
+.tt-card { border: 1px solid var(--line); border-radius: 8px; border-left: 4px solid var(--up); }
+.tt-card-soon { border-left-color: var(--table); }
+.tt-card-beendet { border-left-color: var(--muted); }
+.tt-manage { margin: var(--s4) 0; padding: var(--s3); border: 1px dashed var(--line); border-radius: 8px; }
+.tt-manage h3 { margin-top: 0; }
+.tt-preview { max-height: 40vh; overflow: auto; padding-left: 1.2em; }
+.tt-qr { margin: var(--s4) 0; }

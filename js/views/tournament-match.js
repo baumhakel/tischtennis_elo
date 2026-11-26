@@ -7,8 +7,8 @@ import * as fmt from '../ui/format.js';
 import { viewHead } from './common.js';
 import { linkTo } from './common.js';
 import { pickTournament, entryOpen } from '../app/tournaments.js';
-import { validateSets } from '../core/tournament.js';
-import { formReady } from '../app/forms.js';
+import { validateSets, eloMatch } from '../core/tournament.js';
+import { formReady, canManage } from '../app/forms.js';
 import { previewGame } from './table-logic.js';
 import { findGame } from './game-query.js';
 import { openSheet } from '../ui/sheet.js';
@@ -43,21 +43,23 @@ function page(ctx, rerender) {
   const m = T?.ok ? T.matches.find(x => x.nr === nr) : null;
   if (!m) return [viewHead('Turnierspiel', null, { back: true }), h('p', { class: 'empty' }, 'Dieses Spiel gibt es nicht.')];
   const r = m.result;
-  const members = m.a.id && m.b.id;
+  const members = eloMatch(m);
   const head = viewHead(`Spiel ${m.nr} · ${m.label}`, `${T.name} · Best of ${m.bestOf}, Sätze bis ${T.points}`, { back: true, key: 'turnierspiel', info: [
     'Eingetragen werden die Punkte jedes Satzes, immer aus Sicht der zuerst genannten Seite. Die App prüft, ob die Sätze gültig sind (bis 11, zwei Punkte Vorsprung) und ob das Spiel entschieden ist.',
     'Ein falsches Ergebnis einfach noch einmal eintragen: es gilt immer der letzte Eintrag eines Spiels.',
-    'Spiele zwischen zwei Mitgliedern zählen normal für Elo. Ist ein Gast dabei, zählt das Spiel nur im Turnier.'] });
+    'Spiele ohne Gast zählen normal für Elo (im Doppel als Doppel). Ist ein Gast dabei, zählt das Spiel nur im Turnier.',
+    '„w. o.“ (nicht angetreten): wer nicht zum Spiel kommt, verliert es kampflos. Das zählt im Turnier als Sieg ohne Sätze und Punkte, nie für Elo.'] });
   return [
     head,
     h('section', { class: 'tt-versus' },
       h('div', { class: 'tt-vs-side' + (r?.winner === 'a' ? ' won' : '') }, sideLabel(ctx, m.a, { size: 48, strong: r?.winner === 'a' })),
-      h('div', { class: 'tt-vs-mid' + (r ? '' : ' tt-vs-word') }, r ? `${r.setsA}:${r.setsB}` : 'gegen'),
+      h('div', { class: 'tt-vs-mid' + (r && !r.wo ? '' : ' tt-vs-word') }, r ? (r.wo ? 'w. o.' : `${r.setsA}:${r.setsB}`) : 'gegen'),
       h('div', { class: 'tt-vs-side' + (r?.winner === 'b' ? ' won' : '') }, sideLabel(ctx, m.b, { size: 48, strong: r?.winner === 'b' }))),
-    r ? h('p', { class: 'tt-setline' }, `Sätze: ${setLine(r)}`, h('span', { class: 'muted' }, ` · eingetragen ${fmt.time(r.t)}`)) : null,
+    r ? h('p', { class: 'tt-setline' }, r.wo ? `${sideName(ctx, r.wo === 'a' ? m.a : m.b)} ist nicht angetreten (w. o.)` : `Sätze: ${setLine(r)}`, h('span', { class: 'muted' }, ` · eingetragen ${fmt.time(r.t)}`)) : null,
     m.status === 'wartet' ? h('p', { class: 'muted' }, `Die Gegner stehen noch nicht fest: ${sideName(ctx, m.a)} gegen ${sideName(ctx, m.b)}.`) : null,
-    members ? eloBox(ctx, m) : m.a.key && m.b.key ? h('p', { class: 'muted small' }, 'Mit Gast: zählt nur im Turnier, nicht für Elo.') : null,
+    members && !r?.wo ? eloBox(ctx, m) : m.a.key && m.b.key && !members ? h('p', { class: 'muted small' }, 'Mit Gast: zählt nur im Turnier, nicht für Elo.') : null,
     entryOpen(T) && m.a.key && m.b.key ? entry(ctx, T, m, rerender) : null,
+    entryOpen(T) && m.a.key && m.b.key && canManage(ctx.baseModel.dataset.config, ctx.state.auth.email) ? walkover(ctx, T, m) : null,
     photoStrip(ctx, 'turnier_spiel', `${T.id}#${m.nr}`),
     h('p', { class: 'muted small' }, h('a', { class: 'inline-link', ...linkTo(ctx, 'turnier', { id: T.id }) }, `Zum ${T.name}`)),
   ];
@@ -73,9 +75,9 @@ function eloBox(ctx, m) {
     return h('p', { class: 'small' }, Number.isFinite(d) ? `Elo-Punkte: ${fmt.signed(d, 1)} für den Sieger · ` : '',
       x ? h('a', { class: 'inline-link', ...linkTo(ctx, 'spiel', { ref: m.result.ref }) }, 'Zum Spiel in der Wertung') : 'Noch nicht in der Wertung (Testlauf?).');
   }
-  if (!ctx.baseModel.elo.index.has(m.a.id) && !ctx.baseModel.elo.index.has(m.b.id)) return null;
-  const p = previewGame(ctx.baseModel, [m.a.id], [m.b.id]);
-  return withEnds(ctx, [m.a.id], [m.b.id], h('div', { class: 'chance-bar', role: 'img', 'aria-label': `Siegchance ${sideName(ctx, m.a)} ${fmt.pct(p.eW)}, ${sideName(ctx, m.b)} ${fmt.pct(1 - p.eW)}` },
+  if (![...m.a.ids, ...m.b.ids].some(id => ctx.baseModel.elo.index.has(id))) return null;
+  const p = previewGame(ctx.baseModel, m.a.ids, m.b.ids);
+  return withEnds(ctx, m.a.ids, m.b.ids, h('div', { class: 'chance-bar', role: 'img', 'aria-label': `Siegchance ${sideName(ctx, m.a)} ${fmt.pct(p.eW)}, ${sideName(ctx, m.b)} ${fmt.pct(1 - p.eW)}` },
     h('span', { class: 'a', style: `width:${(p.eW * 100).toFixed(1)}%` }, fmt.pct(p.eW)),
     h('span', { class: 'b' }, fmt.pct(1 - p.eW))));
 }
@@ -130,12 +132,30 @@ function confirm(ctx, T, m, v, done) {
   });
 }
 
+/** „Nicht angetreten“ (management only): the side that didn't show up loses by walkover (sent as „wo:a“ / „wo:b“). */
+function walkover(ctx, T, m) {
+  const ask = () => {
+    const pick = who => {
+      const s = who === 'a' ? m.a : m.b, o = who === 'a' ? m.b : m.a;
+      sheet.set({ title: `${sideName(ctx, s)} nicht angetreten?`,
+        body: [h('p', {}, `${sideName(ctx, o)} gewinnt Spiel ${m.nr} kampflos (w. o.). Das zählt im Turnier als Sieg ohne Sätze und Punkte, nicht für Elo und nicht für Abzeichen.`),
+          m.result ? h('p', { class: 'hint' }, 'Das ersetzt das bisherige Ergebnis.') : null],
+        actions: [{ label: 'Abbrechen' }, { label: 'Eintragen', primary: true, onclick: () => { ctx.actions.sendTournament(T.id, m, { wo: who }); } }] });
+      return false;
+    };
+    const sheet = openSheet({ title: `Spiel ${m.nr}: wer ist nicht angetreten?`,
+      body: h('p', { class: 'muted small' }, 'Nur für ein Spiel, das wirklich nicht gespielt wird. Wer das Turnier verlassen hat, bekommt so jedes restliche Spiel einzeln.'),
+      actions: [{ label: sideName(ctx, m.a), onclick: () => pick('a') }, { label: sideName(ctx, m.b), onclick: () => pick('b') }, { label: 'Abbrechen' }] });
+  };
+  return h('p', { class: 'small' }, h('button', { type: 'button', class: 'link', onclick: ask }, 'Nicht angetreten …'));
+}
+
 /** Demo only: a random but valid result for match m (the stronger side wins more often), sent like a real one. */
 export function demoResult(ctx, T, m) {
   if (!m) return;
   const rnd = Math.random, need = Math.floor(m.bestOf / 2) + 1, sets = [];
   let a = 0, b = 0;
-  const p = m.a.id && m.b.id ? previewGame(ctx.baseModel, [m.a.id], [m.b.id]).eW : 0.5;
+  const p = eloMatch(m) ? previewGame(ctx.baseModel, m.a.ids, m.b.ids).eW : 0.5;
   while (a < need && b < need) {
     const lo = rnd() < 0.2 ? 10 + Math.floor(rnd() * 3) : Math.floor(rnd() * 10), hi = lo >= 10 ? lo + 2 : T.points;
     if (rnd() < p) { sets.push([hi, lo]); a++; } else { sets.push([lo, hi]); b++; }

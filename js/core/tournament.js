@@ -797,6 +797,11 @@ export function buildTournament(T, results, { ratings = new Map(), startRating =
       const d = drawPots(seeded, groupsN, sizes, rng(lotKey + '|toepfe'));
       groupMembers = d.groups; pots = d.pots;
     } else groupMembers = drawGroups(seeded, groupsN, sizes);
+    // after the start the pots follow from the fixed seeds (pot k = seeds of row k) and the written groups
+    if (started != null && T.draw === 'toepfe') {
+      pots = [];
+      for (let k = 0; k * groupsN < seeded.length; k++) pots.push(seeded.slice(k * groupsN, (k + 1) * groupsN).map(p => ({ key: p.key, group: groupMembers.findIndex(g => g.includes(p)) })));
+    }
   }
   const participants = seeded.map((p, i) => ({ key: p.key, id: p.id ?? null, ids: p.people.filter(x => x.id).map(x => x.id), name: p.name, guest: p.guest,
     row: p.row, seed: i + 1, rating: p.guest ? null : Math.round(rate(p)), group: groupMembers.findIndex(g => g.includes(p)),

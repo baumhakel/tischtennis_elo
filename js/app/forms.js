@@ -5,7 +5,8 @@
 //   entriesFor(cfg, form, answers) → [[question ID, answer] …] for io/forms.js
 //   resultAnswers(W, L, nameOf)   winners / losers → the Ergebnis form's answers (display names)
 //   canManage(cfg, email)         the signed-in account is in management_accounts
-//   ACTIONS                       the six actions of the Verwaltung form (choice text = Verwaltung.gs)
+//   ACTIONS                       the actions of the Verwaltung form (choice text = Verwaltung.gs / Turnier.gs)
+//   TOURNAMENT_STEPS, tournamentSteps(T)   Phase 18c: the steps of the action „Turnier“
 
 export const FORMS = {
   result: {
@@ -30,6 +31,7 @@ export const FORMS = {
       inactive_player: 'form_management_entry_inactive_player', active_player: 'form_management_entry_active_player',
       merge_from: 'form_management_entry_merge_from', merge_into: 'form_management_entry_merge_into',
       account_player: 'form_management_entry_account_player', account: 'form_management_entry_account',
+      tournament: 'form_management_entry_tournament', step: 'form_management_entry_step', draw: 'form_management_entry_draw',   // Phase 18c
     },
   },
 };
@@ -45,7 +47,27 @@ export const ACTIONS = {
   deactivate: { label: 'Spieler deaktivieren',   title: 'Spieler deaktivieren',   fields: ['active_player'],                 page: 'form_management_page_deactivate' },
   merge:      { label: 'Spieler zusammenführen', title: 'Spieler zusammenführen', fields: ['merge_from', 'merge_into'],      page: 'form_management_page_merge' },
   accounts:   { label: 'Google-Konto ändern',    title: 'Google-Konto ändern',    fields: ['account_player', 'account'],     page: 'form_management_page_accounts' },
+  // Phase 18c: status and draw of a tournament (from its page, not in the Spieler-verwalten hub)
+  turnier:    { label: 'Turnier', title: 'Turnier', fields: ['tournament', 'step', 'draw'], page: 'form_management_page_turnier', hidden: true },
 };
+
+/** The steps of the Verwaltung action „Turnier“ (choice text of „Schritt“ = Turnier.gs). */
+export const TOURNAMENT_STEPS = {
+  ankuendigen: { label: 'ankündigen', status: 'angekündigt', button: 'Ankündigen', done: 'ist angekündigt' },
+  starten:     { label: 'starten', status: 'aktiv', button: 'Turnier starten', done: 'hat begonnen: die Auslosung steht fest' },
+  beenden:     { label: 'beenden', status: 'beendet', button: 'Turnier beenden', done: 'ist beendet' },
+  entwurf:     { label: 'entwurf', status: 'entwurf', button: 'Zurück auf Entwurf', done: 'ist wieder ein Entwurf' },
+};
+
+/** Which steps fit a status (test tournaments can be started and reset for trying the day out). */
+export function tournamentSteps(T) {
+  const s = T.status;
+  if (s === 'entwurf') return ['ankuendigen'];
+  if (s === 'test') return T.started != null ? ['entwurf'] : ['starten', 'entwurf'];
+  if (s === 'angekündigt') return ['starten', 'entwurf'];
+  if (s === 'aktiv') return ['beenden', 'entwurf'];
+  return [];
+}
 
 /** Are the form's link and the IDs of the questions needed set? (`fields` = only these questions) */
 export function formReady(cfg, form, fields = null) {
@@ -70,6 +92,7 @@ export function resultAnswers(winners, losers, nameOf) {
 /** A tournament match result → the Turnierergebnis answers. sets = [[a, b] …] from the first-named side's view. */
 export function tournamentAnswers(tournamentId, match, sets) {
   const out = { tournament: tournamentId, match: String(match.nr), pairing: `${match.a.name} gegen ${match.b.name}` };
+  if (sets.wo) { out.set1 = `wo:${sets.wo}`; return out; }   // Phase 18c: „w. o.“ — side a or b didn't show up
   sets.forEach((s, i) => { out[`set${i + 1}`] = `${s[0]}:${s[1]}`; });
   return out;
 }

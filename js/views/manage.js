@@ -31,11 +31,11 @@ export default {
   },
 };
 
-const LOG_WORD = { add: 'hinzugefügt', rename: 'umbenannt', activate: 'aktiviert', deactivate: 'deaktiviert', merge: 'zusammengeführt', accounts: 'Google-Konto' };
+const LOG_WORD = { add: 'hinzugefügt', rename: 'umbenannt', activate: 'aktiviert', deactivate: 'deaktiviert', merge: 'zusammengeführt', accounts: 'Google-Konto', turnier: 'Turnier' };
 
 function page(ctx) {
   const ds = ctx.baseModel.dataset, cfg = ds.config;
-  const action = ACTIONS[ctx.params.aktion] ? ctx.params.aktion : null;
+  const action = ACTIONS[ctx.params.aktion] && !ACTIONS[ctx.params.aktion].hidden ? ctx.params.aktion : null;
   if (!canManage(cfg, ctx.state.auth.email)) {
     return [viewHead('Spieler verwalten', null, { back: true }),
       h('p', {}, 'Diese Seiten sind nur für die Verwaltung der Spieler. Wer einen Spieler hinzufügen oder umbenennen lassen möchte, meldet das bitte über „Problem melden“.')];
@@ -55,7 +55,7 @@ function hub(ctx) {
     viewHead('Spieler verwalten', null, { info: [
       'Wähle, was du ändern möchtest. Die App prüft die Angaben wie das Verwaltungs-Skript und öffnet dann das Verwaltungs-Formular ausgefüllt im Browser. Dort „Weiter“ und „Senden“ tippen.',
       'Zurück in der App siehst du, ob die Änderung angekommen ist, und bei einer Ablehnung den Grund.'] }),
-    h('ul', { class: 'menu-links manage-list' }, Object.entries(ACTIONS).map(([id, a]) =>
+    h('ul', { class: 'menu-links manage-list' }, Object.entries(ACTIONS).filter(([, a]) => !a.hidden).map(([id, a]) =>
       h('li', {}, h('a', { class: 'tap', ...linkTo(ctx, 'verwalten', { aktion: id }) }, a.title)))),
     rows.length ? [h('h3', {}, 'Zuletzt'),
       h('ul', { class: 'log-list small' }, rows.map(r => h('li', { class: /^ok$/i.test(r.status) ? null : 'refused' },

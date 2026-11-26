@@ -221,7 +221,7 @@ export function createShell(root, { store, actions }) {
     renderMenu(s, me, f, issues, nErr, online);
 
     // bottom bar
-    tournamentTab = !!(model && visibleTournaments(model.dataset, TURNIER_TEST).active);
+    tournamentTab = !!(model && visibleTournaments(model.dataset, TURNIER_TEST).actives.length);
     for (const a of tabs) if (a.dataset.tab === 'turnier') a.hidden = !tournamentTab;
     const current = tabOf(s.view);
     for (const a of tabs) {

@@ -206,3 +206,51 @@ test('Swiss after the start: round 1 comes from the written pairs', () => {
   const s = buildTournament(fixed, [], { ratings: new Map() });
   assert.deepEqual(s.matches.map(m => [m.a.key, m.b.key]), live.matches.map(m => [m.a.key, m.b.key]));
 });
+
+// ── the app side: two tournaments at once, the Übersicht card, the Verwaltung action in the demo ──
+import { load } from '../js/core/loader.js';
+import { demoRaw, demoForms } from '../js/io/demo.js';
+import { visibleTournaments, suggestionsFor, cardTournaments, pickTournament } from '../js/app/tournaments.js';
+import { tournamentAnswers, tournamentSteps } from '../js/app/forms.js';
+
+test('two tournaments at once: nobody is suggested for two matches; the hub; the card', () => {
+  const ds = load(demoRaw('Europe/Vienna', 'turnier'));
+  const v = visibleTournaments(ds);
+  assert.equal(pickTournament(v, null), null);                        // two going on: the hub
+  const [X, Y] = v.actives;
+  const a = suggestionsFor(v, X, 3), b = suggestionsFor(v, Y, 3);
+  const pa = new Set(a.flatMap(m => [...m.a.people, ...m.b.people]));
+  const clashes = m => [...m.a.people, ...m.b.people].some(k => pa.has(k));
+  const free = Y.matches.filter(m => m.status === 'offen' && !clashes(m));
+  if (free.length) assert.equal(clashes(b[0]), false);                // matches without a busy player come first
+  assert.ok(b.findIndex(clashes) === -1 || b.slice(b.findIndex(clashes)).every(clashes));
+  const today = Math.floor(ds.tournaments.find(t => t.id === 'advent').date);
+  assert.deepEqual(cardTournaments(v, today, 7).map(c => c.kind).sort(), ['aktiv', 'aktiv', 'angekündigt']);
+  const herbst = ds.tournaments.find(t => t.id === 'herbst');
+  assert.equal(cardTournaments(v, Math.floor(herbst.date) + 3, 7).some(c => c.T.id === 'herbst'), true);
+  assert.equal(cardTournaments(v, Math.floor(herbst.date) + 9, 7).some(c => c.T.id === 'herbst'), false);
+  assert.deepEqual(tournamentAnswers('x', { nr: 4, a: { name: 'A' }, b: { name: 'B' } }, { wo: 'b' }).set1, 'wo:b');
+});
+
+test('demo Verwaltung: ankündigen → starten fixes the draw → results count → zurück auf Entwurf restores', async () => {
+  const box = demoForms('Europe/Vienna');
+  const fresh = () => load(box.apply(demoRaw('Europe/Vienna', 'turnier')));
+  let W = fresh().tournaments.find(t => t.id === 'weihnachten');
+  assert.deepEqual(tournamentSteps(W), ['starten', 'entwurf']);
+  const before = W.draw;
+  await box.submit('management', { action: 'turnier', fields: { tournament: 'weihnachten', step: 'starten', draw: drawText(W) } });
+  W = fresh().tournaments.find(t => t.id === 'weihnachten');
+  assert.equal(W.status, 'aktiv');
+  assert.ok(W.started != null);
+  assert.deepEqual(W.draw.rows, before.rows);
+  assert.equal(W.pots.length, 5);                                      // the pots after the start, from the fixed seeds
+  const log = fresh().log.at(-1);
+  assert.equal(log.status, 'ok');
+  // a stale draw is refused
+  await box.submit('management', { action: 'turnier', fields: { tournament: 'advent', step: 'starten', draw: '2|1|A|Niemand|' } });
+  assert.match(fresh().log.at(-1).status, /^refused: cannot starten/);
+  await box.submit('management', { action: 'turnier', fields: { tournament: 'weihnachten', step: 'entwurf', draw: '' } });
+  const raw = box.apply(demoRaw('Europe/Vienna', 'turnier'));
+  assert.ok(raw.turnier_teilnehmer.filter(r => r[0] === 'weihnachten').every(r => r[2] === '' && r[3] === ''));
+  assert.equal(load(raw).tournaments.some(t => t.id === 'weihnachten'), false);
+});

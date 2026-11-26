@@ -254,3 +254,36 @@ test('demo Verwaltung: ankündigen → starten fixes the draw → results count 
   assert.ok(raw.turnier_teilnehmer.filter(r => r[0] === 'weihnachten').every(r => r[2] === '' && r[3] === ''));
   assert.equal(load(raw).tournaments.some(t => t.id === 'weihnachten'), false);
 });
+
+// ── QR encoder (decoded with OpenCV during development: 130 codes, all levels and masks, versions 1–10) ──
+import { encodeQr, rsRemainder, formatBits, CAPACITY } from '../js/core/qr-encode.js';
+import { posterGeometry, packBlocks } from '../js/views/print-tournament.js';
+
+test('QR: Reed–Solomon and format bits match the standard, structure is right', () => {
+  // the „HELLO WORLD“ 1-M example (ISO 18004 / thonky.com): data codewords → 10 EC codewords
+  assert.deepEqual(rsRemainder([32, 91, 11, 120, 209, 114, 220, 77, 67, 64, 236, 17, 236, 17, 236, 17], 10), [196, 35, 39, 119, 235, 215, 231, 226, 93, 23]);
+  assert.equal(formatBits('L', 0).toString(2).padStart(15, '0'), '111011111000100');
+  assert.equal(formatBits('M', 0).toString(2).padStart(15, '0'), '101010000010010');
+  assert.equal(formatBits('Q', 0).toString(2).padStart(15, '0'), '011010101011111');
+  assert.equal(formatBits('H', 0).toString(2).padStart(15, '0'), '001011010001001');
+  assert.deepEqual(CAPACITY.H, [7, 14, 24, 34, 44, 58, 64, 84, 98, 119]);
+  const q = encodeQr('https://baumhakel.github.io/tischtennis_elo/#/turnierspiel?id=weihnachten26&nr=12');
+  assert.equal(q.size, 17 + 4 * q.version);
+  const ring = [0, 1, 2, 3, 4, 5, 6].map(i => q.modules[0][i]);
+  assert.deepEqual(ring, [true, true, true, true, true, true, true]);   // finder top edge
+  assert.equal(q.modules[q.size - 8][8], true);                          // dark module
+  assert.ok(q.isFinder(3, 3) && q.isFinder(3, q.size - 2) && !q.isFinder(10, 10));
+  assert.throws(() => encodeQr('x'.repeat(200)));
+});
+
+test('Aushang: four A3 windows overlap by 8 mm; blocks never cross a seam', () => {
+  const g = posterGeometry('hoch');
+  assert.deepEqual([g.W, g.H], [562, 808]);
+  for (const r of g.regions) {
+    assert.ok(r.x + r.w <= g.sx || r.x >= g.ww, 'clear of the vertical seam band');
+    assert.ok(r.y + r.h <= g.sy || r.y >= g.wh, 'clear of the horizontal seam band');
+  }
+  const p = packBlocks([{ h: 300, gap: 7 }, { h: 100, gap: 7 }, { h: 50, gap: 0, title: 10 }], g.regions);
+  assert.deepEqual(p.map(x => x.region), [0, 1, 1]);
+  assert.equal(packBlocks([{ h: 900, gap: 0 }], g.regions), null);
+});

@@ -154,6 +154,8 @@ export function createShell(root, { store, actions }) {
 
   function update(s) {
     const { data, auth } = s;
+    // Phase 18c: print views (views/index.js bare: true) without the app frame
+    document.body.classList.toggle('bare', !!viewById(s.view)?.bare);
     const model = data.model;
     const online = typeof navigator === 'undefined' || navigator.onLine !== false;
     const issues = model?.dataset.issues || [];

@@ -953,3 +953,82 @@ body.viewer-open { overflow: hidden; }
 .tt-manage h3 { margin-top: 0; }
 .tt-preview { max-height: 40vh; overflow: auto; padding-left: 1.2em; }
 .tt-qr { margin: var(--s4) 0; }
+.qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--s4) var(--s3); margin: var(--s3) 0; }
+.qr-cell { margin: 0; display: grid; gap: var(--s1); }
+.qr-cell svg { width: 100%; height: auto; display: block; }
+.qr-cell figcaption { font-size: 13px; }
+.tt-qr svg { width: min(260px, 70vw); height: auto; display: block; margin: var(--s2) 0; }
+
+/* Phase 18c: print views without the app frame (body.bare), the tournament pinboard (#/aushang) */
+body.bare .band, body.bare .lens, body.bare .tabs, body.bare .banner, body.bare .notice { display: none !important; }
+body.bare .frame { max-width: none; padding-bottom: var(--s4); }
+.pb-tools { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; margin: var(--s2) 0 var(--s3); }
+.pb-sheets { display: grid; grid-template-columns: repeat(2, max-content); gap: 10px; }
+.pb-sheetwrap { overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.25); background: #fff; }
+.pb-sheet { width: 297mm; height: 420mm; position: relative; overflow: hidden; background: #fff; transform-origin: 0 0; }
+.pb-sheet.quer { width: 420mm; height: 297mm; }
+.pb-window { position: absolute; left: 6mm; top: 6mm; overflow: hidden; }
+.pb-measure { position: absolute; left: -10000px; top: 0; visibility: hidden; }
+/* the poster itself: always black on white, whatever the app theme */
+.pb-poster { position: relative; background: #fff; color: #111; font: 4mm/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.pb-poster * { box-sizing: border-box; }
+.pb-region { position: absolute; display: flex; flex-direction: column; gap: 1.75em; }
+.pb-block { break-inside: avoid; }
+.pb-poster h2 { font-size: 2.75em; line-height: 1.1; margin: 0 0 0.5em; color: #1D5E46; }
+.pb-poster h3 { font-size: 1.625em; margin: 0 0 0.625em; color: #1D5E46; border-bottom: 0.1em solid #1D5E46; padding-bottom: 0.25em; }
+.pb-poster h4 { font-size: 1.15em; margin: 0 0 0.375em; }
+.pb-poster .pb-small { font-size: 0.8em; color: #444; }
+.pb-head { display: grid; grid-template-columns: 1fr 11em; gap: 1.25em; align-items: start; }
+.pb-head svg { width: 11em; height: 11em; }
+.pb-qrcap { font-size: 0.75em; text-align: center; margin-top: 0.25em; }
+.pb-matrix, .pb-table { border-collapse: collapse; margin: 0 0 0.75em; }
+.pb-matrix td, .pb-matrix th, .pb-table td, .pb-table th { border: 0.0625em solid #888; padding: 0.2em 0.375em; font-size: 0.9em; text-align: left; font-weight: 400; }
+.pb-matrix td.cell { width: 3.25em; height: 2em; }
+.pb-matrix td.self { background: repeating-linear-gradient(45deg, #fff 0 0.25em, #ccc 0.25em 0.325em); }
+.pb-table td.box { width: 3.25em; height: 2em; }
+.pb-table td.name { width: 17.5em; }
+.pb-matches { display: grid; gap: 0; }
+.pb-match { display: grid; grid-template-columns: 2.75em 1fr auto 4.75em; gap: 0.625em; align-items: center; border-top: 0.0625em solid #aaa; padding: 0.25em 0; min-height: 5.25em; }
+.pb-match:last-child { border-bottom: 0.0625em solid #aaa; }
+.pb-nr { font: 600 1.25em system-ui, sans-serif; text-align: center; }
+.pb-nr small { display: block; font: 400 0.65em system-ui, sans-serif; color: #555; }
+.pb-sides { display: grid; gap: 0.375em; min-width: 0; }
+.pb-side { font-size: 1.05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-bottom: 0.05em dotted #999; min-height: 1.625em; }
+.pb-side .from { font-size: 0.7em; color: #555; font-style: italic; display: block; line-height: 1.1; }
+.pb-sets { display: grid; grid-auto-flow: column; gap: 0.25em; }
+.pb-set { width: 2.25em; height: 3.75em; border: 0.0625em solid #888; display: grid; grid-template-rows: 1fr 1fr; }
+.pb-set span { border-bottom: 0.05em dotted #bbb; }
+.pb-set span:last-child { border: 0; }
+.pb-match svg { width: 4.75em; height: 4.75em; }
+.pb-ko { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 1em; }
+.pb-ko-round { display: flex; flex-direction: column; justify-content: space-around; gap: 0.75em; }
+.pb-ko-round h4 { text-align: center; }
+.pb-ko .pb-match { grid-template-columns: 1fr 4.25em; grid-template-areas: "nr qr" "sides qr" "sets sets"; border: 0.075em solid #777; padding: 0.375em; gap: 0.25em 0.5em; min-height: 0; }
+.pb-ko .pb-match .pb-nr { grid-area: nr; text-align: left; font-size: 0.85em; }
+.pb-ko .pb-match .pb-sides { grid-area: sides; }
+.pb-ko .pb-match .pb-sets { grid-area: sets; justify-content: start; }
+.pb-ko .pb-match .pb-set { width: 2em; height: 3em; }
+.pb-ko .pb-match svg { grid-area: qr; width: 4.25em; height: 4.25em; }
+.pb-ko .pb-side { font-size: 0.95em; }
+.pb-swiss { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 0.75em; }
+.pb-pool { border: 0.075em solid #777; margin-bottom: 0.625em; padding: 0.25em 0.375em; }
+.pb-pool b { font-size: 1em; }
+.pb-line { border-bottom: 0.05em solid #999; height: 1.875em; font-size: 0.65em; color: #777; display: flex; align-items: flex-end; }
+.pb-mark { position: absolute; pointer-events: none; }
+.pb-glue { background: repeating-linear-gradient(45deg, rgba(29,94,70,.10) 0 1.5mm, transparent 1.5mm 3mm); }
+.pb-markline { border: 0 dashed #1D5E46; }
+.pb-marktext { position: absolute; font-size: 2.6mm; color: #1D5E46; white-space: nowrap; }
+.pb-pageno { position: absolute; font: 600 4mm system-ui, sans-serif; color: #1D5E46; }
+@media print {
+  @page { margin: 0; }
+  html:has(body.bare), body.bare { background: #fff !important; min-height: 0 !important; height: auto !important; padding: 0 !important; }
+  body.bare > *:not(#app), body.bare #app > *:not(.frame), body.bare .drawer, body.bare .backdrop { display: none !important; }
+  body.bare .frame > *:not(#view), body.bare #view > *:not(.pb-sheets) { display: none !important; }
+  body.bare .frame, body.bare #view { padding: 0 !important; margin: 0 !important; max-width: none !important; }
+  .pb-sheets { display: block; }
+  .pb-sheetwrap { box-shadow: none; width: auto !important; height: auto !important; overflow: visible; break-after: page; page-break-after: always; }
+  .pb-sheetwrap:last-child { break-after: auto; page-break-after: auto; }
+  .pb-sheet { transform: none !important; }
+}
+.pb-ko .pb-match .pb-sets { grid-auto-columns: minmax(0, 2em); width: 100%; }
+.pb-ko .pb-match .pb-set { width: auto; }

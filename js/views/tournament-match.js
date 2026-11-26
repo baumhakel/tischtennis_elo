@@ -13,7 +13,7 @@ import { previewGame } from './table-logic.js';
 import { findGame } from './game-query.js';
 import { openSheet } from '../ui/sheet.js';
 import { photoStrip } from './photo-ui.js';
-import { sideLabel, sideName, setLine } from './tournament-ui.js';
+import { sideLabel, sideName, setLine, qrDetails } from './tournament-ui.js';
 import { withEnds } from '../ui/avatar.js';
 
 // typed points per match, kept while the page is open (not in the URL): key `id#nr` → [[a, b] …] as strings
@@ -61,6 +61,7 @@ function page(ctx, rerender) {
     entryOpen(T) && m.a.key && m.b.key ? entry(ctx, T, m, rerender) : null,
     entryOpen(T) && m.a.key && m.b.key && canManage(ctx.baseModel.dataset.config, ctx.state.auth.email) ? walkover(ctx, T, m) : null,
     photoStrip(ctx, 'turnier_spiel', `${T.id}#${m.nr}`),
+    qrDetails(ctx, `#/turnierspiel?id=${encodeURIComponent(T.id)}&nr=${m.nr}`, 'QR-Code für dieses Spiel', `Spiel ${m.nr}`),
     h('p', { class: 'muted small' }, h('a', { class: 'inline-link', ...linkTo(ctx, 'turnier', { id: T.id }) }, `Zum ${T.name}`)),
   ];
 }

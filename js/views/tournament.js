@@ -12,7 +12,7 @@ import { timeLeft, drawText } from '../core/tournament.js';
 import { canManage, formReady, TOURNAMENT_STEPS, tournamentSteps } from '../app/forms.js';
 import { openSheet } from '../ui/sheet.js';
 import { sideLabel, sideName, matchList, groupTableView, bracketView, swissView, swissTable, potReveal, potSummary, plural,
-  STATUS_TEXT, MODE_TEXT } from './tournament-ui.js';
+  STATUS_TEXT, MODE_TEXT, qrDetails } from './tournament-ui.js';
 import { photoStrip, thumbButton, showPhotos } from './photo-ui.js';
 import { demoResult } from './tournament-match.js';
 
@@ -95,6 +95,8 @@ function page(ctx, rerender) {
       : swissMode ? h('section', {}, h('h3', {}, 'K.-o.-Runde'), h('p', { class: 'muted' }, `Steht fest, sobald die Schweizer Runde vorbei ist${T.settings.koN ? ` (die besten ${T.settings.koN} kommen weiter)` : ''}.`)) : null,
     photoStrip(ctx, 'turnier', T.id, { title: 'Fotos vom Turnier' }),
     !potsLive ? potSummary(ctx, T) : null,
+    qrDetails(ctx, `#/turnier?id=${encodeURIComponent(T.id)}`, 'QR-Code für dieses Turnier', T.name),
+    h('p', { class: 'small' }, h('a', { class: 'inline-link', ...linkTo(ctx, 'aushang', { turnier: T.id }) }, 'Aushang zum Ausdrucken (A1 aus vier A3-Blättern)')),
     issues(T),
     manage,
     h('p', { class: 'muted small' }, h('a', { class: 'inline-link', ...linkTo(ctx, 'spiele', { quelle: 'turnier' }) }, 'Alle Turnierspiele, die für Elo zählen'),

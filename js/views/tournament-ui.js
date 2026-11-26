@@ -7,6 +7,20 @@ import { avatar } from '../ui/avatar.js';
 import { linkTo } from './common.js';
 import { LETTERS } from '../core/tournament.js';
 import { cardTournaments, suggestionsFor } from '../app/tournaments.js';
+import { qrSvg, appUrl } from '../ui/qr.js';
+
+/** A QR code in the style set in config (qr_style, qr_eyes). hash = the page, e.g. „#/turnierspiel?id=x&nr=3“. */
+export function tournamentQr(ctx, hash, label, extra = {}) {
+  const cfg = ctx.baseModel.dataset.config;
+  return qrSvg(appUrl(hash), { style: cfg.qr_style, eyes: cfg.qr_eyes, label, ...extra });
+}
+
+/** „QR-Code für dieses Spiel / Turnier“: collapsed, for the pinboard or passing a phone around. */
+export function qrDetails(ctx, hash, title, label) {
+  return h('details', { class: 'tt-details tt-qr' }, h('summary', {}, title),
+    tournamentQr(ctx, hash, label),
+    h('p', { class: 'muted small' }, 'Mit der Kamera scannen: öffnet diese Seite in der App.'));
+}
 
 /** „1 Spiel“ / „3 Spiele“ */
 export const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;

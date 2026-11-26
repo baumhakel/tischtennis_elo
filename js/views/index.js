@@ -38,6 +38,8 @@ export const VIEWS = [
   { id: 'turnier',     title: 'Turnier',          menu: false, load: () => import('./tournament.js') },   // Phase 18
   { id: 'turnierspiel', title: 'Turnierspiel',    menu: false, load: () => import('./tournament-match.js') },
   { id: 'turniere',    title: 'Turniere',                       load: () => import('./tournaments.js') },
+  { id: 'qr-test',     title: 'QR-Test',          menu: false, load: () => import('./qr-test.js') },          // Phase 18c
+  { id: 'aushang',     title: 'Aushang',          menu: false, bare: true, load: () => import('./print-tournament.js') },   // Phase 18c: print view
   { id: 'entdecken',   title: 'Entdecken',                    load: () => import('./entdecken.js') },
   { id: 'more',        title: 'Entdecken',        menu: false, load: () => import('./entdecken.js') },   // old links
 ];

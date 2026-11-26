@@ -950,8 +950,8 @@ export function buildTournament(T, results, { ratings = new Map(), startRating =
 }
 
 function side(p, label = null) {
-  return p ? { key: p.key, id: p.id, ids: p.ids, name: p.name, guest: p.guest, people: p.people, members: p.members }
-    : { key: null, id: null, ids: [], name: null, guest: false, label, people: [], members: null };
+  return p ? { key: p.key, id: p.id, ids: p.ids, name: p.name, guest: p.guest, people: p.people, members: p.members, from: label }
+    : { key: null, id: null, ids: [], name: null, guest: false, label, from: label, people: [], members: null };
 }
 
 /** Does this match count for Elo once played (both sides known, no guest)? */

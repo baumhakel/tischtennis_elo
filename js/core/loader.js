@@ -93,7 +93,7 @@ export function load(raw) {
   const tournaments = [];
   for (const T of tour.list.slice().sort((a, b) => (a.date ?? Infinity) - (b.date ?? Infinity))) {
     if (T.status === 'entwurf') continue;
-    const ratings = seedRatings(games, config, T.seedAt);
+    const ratings = seedRatings(games, config, T.seedAt, T.seedLeague);   // Phase 18c: setzwertung (alle · einzel · doppel)
     const state = buildTournament(T, results, { ratings, startRating: config.start_rating });
     for (const i of state.issues) {
       report('warning', 'tournament_result', `Turnier „${T.name}“, Tab „turnier_ergebnisse“: ${i.text}`, { tab: TABS.turnier_ergebnisse, row: i.row });
@@ -101,7 +101,7 @@ export function load(raw) {
     if (!state.ok && state.problem) report('info', 'tournament', `Turnier „${T.name}“: ${state.problem}`, { tab: TABS.turniere, row: T.row });
     for (const tg of tournamentGames(state)) {
       games.push({ g: -1, t: tg.t, ref: tg.ref, source: 'turnier', row: tg.row, winners: tg.winners, losers: tg.losers,
-        double: false, approxTime: false, tournament: tg.tournament });
+        double: tg.double, approxTime: false, tournament: tg.tournament });
       counts.tournamentGames = (counts.tournamentGames || 0) + 1;
     }
     games.sort(order);
@@ -118,8 +118,8 @@ export function load(raw) {
   const photos = parsePhotos(raw.fotos, players);   // Phase 18b
   // every name ever used (aliases + display names, normalised): a new name must not be one of them (core/manage.js)
   const takenNames = [...idByName.keys()];
-  const tourHash = fnv1a(JSON.stringify([tour.list.map(t => [t.id, t.status, t.name, t.winnerPhoto, t.participants.map(p => p.key + (p.seed || '') + (p.pin ?? ''))]),
-    results.map(r => [r.row, r.t, r.tournament, r.nr, r.sets])]));
+  // every setting and participant of every tournament (Phase 18c: a changed setting must show at once)
+  const tourHash = fnv1a(JSON.stringify([tour.list, results.map(r => [r.row, r.t, r.tournament, r.nr, r.sets])]));
   return { config, players, games, issues, counts, takenNames, log, photos, tournaments,
     hash: datasetHash(config, players, games, log, photos, tourHash) };
 }

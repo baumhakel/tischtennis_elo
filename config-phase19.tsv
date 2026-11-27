@@ -1,3 +1,4 @@
 key	value	note
-poster_masthead	Netzkante	Name der Monatszeitung (Aushang, Phase 19)
+poster_masthead	Top Spin	Name der Monatszeitung (Aushang, Phase 19)
+poster_issue	Ausgabe {monat}/{jahr}	Ausgabezeile; Platzhalter {monat} {jahr} {jahr4} {nr} {monatsname}; leer = keine (Phase 19)
 poster_max_badges	12	Abzeichen-Gruppen auf dem Aushang (Phase 19)

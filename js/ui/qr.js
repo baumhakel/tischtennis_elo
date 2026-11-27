@@ -71,6 +71,17 @@ export function qrSvg(text, { style = 'rund', eyes = 'schlaeger', fg = '#111', b
   return svg;
 }
 
+const HEX = /^#[0-9a-f]{6}$/i;
+/**
+ * A QR code in the style set in config: qr_style, qr_eyes, qr_color (the whole code, dark enough to scan),
+ * qr_racket_color (the rackets in the eyes; empty = same as qr_color). Invalid colours fall back to black.
+ */
+export function configQr(cfg, text, label, extra = {}) {
+  const fg = HEX.test(cfg.qr_color || '') ? cfg.qr_color : '#111';
+  const ball = HEX.test(cfg.qr_racket_color || '') ? cfg.qr_racket_color : fg;
+  return qrSvg(text, { style: cfg.qr_style, eyes: cfg.qr_eyes, fg, ball, label, ...extra });
+}
+
 /** The app's address for a page (for printed codes): this site without ?demo, keeping ?turniertest. */
 export function appUrl(hash) {
   if (typeof location === 'undefined') return hash;

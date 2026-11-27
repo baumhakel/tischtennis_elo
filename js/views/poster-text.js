@@ -31,11 +31,13 @@ export function storyText(s, c) {
 
 export function allTimeText(r, c) {
   const who = list(c, r.who);
-  if (r.kind === 'gain') return `${who} gewinnt ${fmt.elo(r.now)} Elo-Punkte in einem Spiel`;
+  if (r.kind === 'gain') return `${who} gewinnt ${gainOf(r, r.now)} Elo-Punkte in einem Spiel`;
   if (r.kind === 'upset') return `${who} gewinnt mit ${fmt.pct(r.now)} Siegchance`;
   return `${who} gewinnt ${r.now} Spiele in Folge`;
 }
-export const allTimeSub = r => (r.kind === 'upset' ? `Bisheriger Rekord: ${fmt.pct(r.old)}.` : `Bisheriger Rekord: ${r.kind === 'gain' ? fmt.elo(r.old) : r.old}.`);
+// a record that beats the old one only by decimals shows one decimal, so the two numbers differ
+const gainOf = (r, x) => (fmt.elo(r.now) === fmt.elo(r.old) ? fmt.dec1(x) : fmt.elo(x));
+export const allTimeSub = r => (r.kind === 'upset' ? `Bisheriger Rekord: ${fmt.pct(r.old)}.` : `Bisheriger Rekord: ${r.kind === 'gain' ? gainOf(r, r.old) : r.old}.`);
 
 /** The personal line on a player card. */
 export function lineText(l, c) {

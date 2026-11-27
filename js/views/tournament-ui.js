@@ -7,12 +7,11 @@ import { avatar } from '../ui/avatar.js';
 import { linkTo } from './common.js';
 import { LETTERS } from '../core/tournament.js';
 import { cardTournaments, suggestionsFor } from '../app/tournaments.js';
-import { qrSvg, appUrl } from '../ui/qr.js';
+import { configQr, appUrl } from '../ui/qr.js';
 
-/** A QR code in the style set in config (qr_style, qr_eyes). hash = the page, e.g. „#/turnierspiel?id=x&nr=3“. */
+/** A QR code in the style and colours set in config. hash = the page, e.g. „#/turnierspiel?id=x&nr=3“. */
 export function tournamentQr(ctx, hash, label, extra = {}) {
-  const cfg = ctx.baseModel.dataset.config;
-  return qrSvg(appUrl(hash), { style: cfg.qr_style, eyes: cfg.qr_eyes, label, ...extra });
+  return configQr(ctx.baseModel.dataset.config, appUrl(hash), label, extra);
 }
 
 /** „QR-Code für dieses Spiel / Turnier“: collapsed, for the pinboard or passing a phone around. */

@@ -155,10 +155,13 @@ export const CONFIG_DEFAULTS = {
   tournament_suggestions:        { type: 'integer', value: 3,  min: 1, max: 8 },   // „Als Nächstes“ on the tournament page
   tournament_game_minutes:       { type: 'integer', value: 12, min: 3 },           // time estimate until enough results are in
   tournament_card_days:          { type: 'integer', value: 7, min: 0, max: 60 },    // Phase 18c: Übersicht card with the winner, days after the end
-  poster_masthead:               { type: 'string',  value: 'Netzkante' },          // Phase 19: name of the monthly wall newspaper
+  poster_masthead:               { type: 'string',  value: 'Top Spin' },           // Phase 19: name of the monthly wall newspaper ({monat} {jahr} … allowed)
+  poster_issue:                  { type: 'string',  value: 'Ausgabe {monat}/{jahr}', optional: true },   // Phase 19: issue line; {monat} {jahr} {jahr4} {nr} {monatsname}; empty = none
   poster_max_badges:             { type: 'integer', value: 12, min: 1, max: 40 },  // Phase 19: badge groups shown on the poster
   qr_style:                      { type: 'string',  value: 'rund' },               // Phase 18c: QR code modules: rund · punkte · eckig
   qr_eyes:                       { type: 'string',  value: 'schlaeger' },          // Phase 18c: QR code eyes: schlaeger (ring + racket) · schlaeger-rund · quadrat
+  qr_color:                      { type: 'string',  value: '#1D5E46' },            // Phase 18c (27 Nov): colour of the whole QR code (#rrggbb, dark)
+  qr_racket_color:               { type: 'string',  value: '#D0571F', optional: true },   // … of the rackets in the eyes (empty = qr_color)
   // Phase 17: usage counting (app/usage.js) via the hidden „Nutzung“ form. optional: empty = no counting
   form_usage_url:                { type: 'url',     value: '', optional: true },
   form_usage_entry_device:       { type: 'string',  value: '', optional: true },

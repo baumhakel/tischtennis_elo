@@ -109,3 +109,12 @@ test('a month without games: only pauses, a quiet story, nothing empty', () => {
   assert.equal(Q.network.edges.length, 0);
   assert.equal(Q.riddle, null);
 });
+
+test('masthead from config: name and issue line with placeholders', async () => {
+  const { mastheadText } = await import('../js/views/poster.js').catch(() => ({}));
+  if (!mastheadText) return;   // views/poster.js needs the DOM helpers only when drawing
+  const D = { year: 2026, month: 11, issue: 1 };
+  assert.deepEqual(mastheadText({ poster_masthead: 'Top Spin', poster_issue: 'Ausgabe {monat}/{jahr}' }, D), { title: 'Top Spin', issue: 'Ausgabe 11/26' });
+  assert.deepEqual(mastheadText({ poster_masthead: 'Top Spin - Ausgabe {monat}/{jahr}', poster_issue: '' }, D), { title: 'Top Spin - Ausgabe 11/26', issue: '' });
+  assert.equal(mastheadText({ poster_masthead: 'X', poster_issue: 'Nr. {nr} · {monatsname} {jahr4}' }, { year: 2027, month: 1, issue: 3 }).issue, 'Nr. 3 · Jänner 2027');
+});

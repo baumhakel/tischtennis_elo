@@ -15,7 +15,7 @@ import { serialToParts } from '../core/normalize.js';
 import { storyText, lineText, recordTiles, numbersRow, riddleFacts, allTimeText, allTimeSub } from './poster-text.js';
 import { badgeLabel, DEFS } from './badge-defs.js';
 import { medal } from '../ui/medal.js';
-import { qrSvg, appUrl } from '../ui/qr.js';
+import { configQr, appUrl } from '../ui/qr.js';
 import { loadD3 } from '../ui/charts/d3.js';
 import { forecastRows, chance, monthEndLabel } from './forecast-logic.js';
 
@@ -150,14 +150,15 @@ function buildPoster(ctx, D) {
   const T = { names: ctx.names, monthName, cfg };
   const name = id => ctx.names.get(id) ?? id;
   const slotOf = new Map(D.bump.series.filter(x => x.slot != null).map(x => [x.id, SLOTS[x.slot]]));
+  const mast = masthead_(cfg, D);
   const [head, ...teasers] = D.stories;
   const story = storyText(head, T);
 
   // 1. masthead and headline
   const masthead = h('header', { class: 'pp-mast' },
     h('div', { class: 'pp-mast-main' },
-      h('div', { class: 'pp-title' }, cfg.poster_masthead || 'Netzkante'),
-      h('div', { class: 'pp-subtitle' }, `Die Monatszeitung der Tischtennisplatte · ${monthName} ${D.year}${D.issue >= 1 ? ` · Ausgabe ${D.issue}` : ''}`),
+      h('div', { class: 'pp-title' }, mast.title),
+      h('div', { class: 'pp-subtitle' }, [mast.issue, `Die Monatszeitung der Tischtennisplatte · ${monthName} ${D.year}`].filter(Boolean).join(' · ')),
       h('h1', { class: 'pp-headline' }, story.title),
       h('p', { class: 'pp-dek' }, story.sub, D.running ? ' (Der Monat läuft noch: Stand heute.)' : '')),
     teasers.length ? h('aside', { class: 'pp-teasers' }, h('div', { class: 'pp-kicker' }, 'Außerdem'),
@@ -225,7 +226,7 @@ function buildPoster(ctx, D) {
   const riddle = D.riddle;
   const corner = h('section', { class: 'pp-corner' },
     h('div', { class: 'pp-new' },
-      qrSvg(appUrl('#/'), { style: cfg.qr_style, eyes: cfg.qr_eyes, label: 'Tischtennis Elo' }),
+      configQr(cfg, appUrl('#/'), 'Tischtennis Elo'),
       h('div', {}, h('h2', {}, 'Neu hier? So geht’s'),
         h('ol', {}, h('li', {}, 'Spielen, gegen wen du willst.'), h('li', {}, 'Ergebnis eintragen: QR-Code am anderen Aushang scannen.'), h('li', {}, 'In der App deinen Elo-Wert und Platz ansehen (Code links).')))),
     riddle ? h('div', { class: 'pp-riddle' }, h('h2', {}, 'Wer bin ich?'), h('ul', {}, riddleFacts(riddle).map(f => h('li', {}, f)))) : null);
@@ -237,8 +238,21 @@ function buildPoster(ctx, D) {
   const answer = riddle ? h('div', { class: 'pp-answer', style: `top:${H - BOTTOM + 3}mm` }, `Auflösung: ${name(riddle.id)}`) : null;
   return h('div', { class: 'pp-poster', style: `width:${W}mm;height:${H}mm` },
     h('div', { class: 'pp-seam', style: `top:${SEAM - 6}mm` }), top, low, answer,
-    h('div', { class: 'pp-foot', style: `top:${H - BOTTOM + 3}mm` }, `${cfg.poster_masthead || 'Netzkante'}${D.issue >= 1 ? ` · Ausgabe ${D.issue}` : ''} · gedruckt ${fmt.date(ctx.now)}`));
+    h('div', { class: 'pp-foot', style: `top:${H - BOTTOM + 3}mm` }, [mast.title, mast.issue, `gedruckt ${fmt.date(ctx.now)}`].filter(Boolean).join(' · ')));
 }
+
+/**
+ * The masthead from config: poster_masthead (the name, e.g. „Top Spin“) and poster_issue (the issue line, e.g.
+ * „Ausgabe {monat}/{jahr}“ → „Ausgabe 11/26“). Placeholders: {monat} 11 · {jahr} 26 · {jahr4} 2026 · {nr} the
+ * running number (from November 2026) · {monatsname} November. An empty poster_issue leaves the line out.
+ */
+export function mastheadText(cfg, D) {
+  const fill = t => String(t || '').replace(/\{(monat|jahr4|jahr|nr|monatsname)\}/g, (_, k) => ({
+    monat: String(D.month).padStart(2, '0'), jahr: String(D.year).slice(2), jahr4: String(D.year),
+    nr: String(Math.max(1, D.issue)), monatsname: MONTHS[D.month - 1] })[k]);
+  return { title: fill(cfg.poster_masthead || 'Top Spin').trim(), issue: fill(cfg.poster_issue ?? 'Ausgabe {monat}/{jahr}').trim() };
+}
+const masthead_ = mastheadText;
 
 function card(ctx, p, T, color) {
   const name = ctx.names.get(p.id) ?? p.id;

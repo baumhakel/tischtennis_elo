@@ -2,3 +2,5 @@ key	value	note
 tournament_card_days	7	Turnier-Karte auf der Übersicht: Tage nach dem Turnier (Phase 18c)
 qr_style	rund	QR-Codes: rund · punkte · eckig (Phase 18c)
 qr_eyes	schlaeger	QR-Augen: schlaeger (Rahmen + Schläger) · schlaeger-rund · quadrat (Phase 18c)
+qr_color	#1D5E46	Farbe des ganzen QR-Codes, dunkel (Phase 18c)
+qr_racket_color	#D0571F	Farbe der Schläger in den Augen, leer = wie qr_color (Phase 18c)

@@ -1,4 +1,4 @@
 key	value	note
 tournament_card_days	7	Turnier-Karte auf der Übersicht: Tage nach dem Turnier (Phase 18c)
 qr_style	rund	QR-Codes: rund · punkte · eckig (Phase 18c)
-qr_eyes	eckig	QR-Augen: rund (Schläger) · eckig (eckiger Schläger) · quadrat; erst nach dem Handy-Test auf rund stellen (Phase 18c)
+qr_eyes	schlaeger	QR-Augen: schlaeger (Rahmen + Schläger) · schlaeger-rund · quadrat (Phase 18c)

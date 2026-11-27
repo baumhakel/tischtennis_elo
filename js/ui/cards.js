@@ -3,7 +3,9 @@
 //
 //   spec = { kicker, title, big, bigLabel, sub, spark: [numbers], sparkLabels: [left, right],
 //            lines: [{ label, value, link, tone: 'up'|'down' }], medals: [{ motif, level, title }],
-//            link, note, foot }   foot replaces the date in the image's footer („Stand …“ by default)
+//            link, note, foot, medalsFirst }   foot replaces the date in the image's footer („Stand …“ by default)
+//   Phase 20: the result comes first. Medals are small and after the lines, except on cards about badges
+//   (medalsFirst: a player's Abzeichen).
 //   cardHtml(spec)              → element
 //   cardCanvas(spec) → Promise<HTMLCanvasElement>
 import { h } from './dom.js';
@@ -20,10 +22,11 @@ export function cardHtml(s) {
       s.bigLabel ? h('div', { class: 'xc-biglabel' }, s.bigLabel) : null,
       s.sub ? h('div', { class: 'xc-sub' }, s.sub) : null,
       s.spark?.length > 1 ? sparkSvg(s.spark, s.sparkLabels) : null,
-      s.medals?.length ? h('div', { class: 'xc-medals' }, s.medals.map(m => medal(m.motif, m.level, { size: 44, title: m.title }))) : null,
+      s.medalsFirst && s.medals?.length ? h('div', { class: 'xc-medals' }, s.medals.map(m => medal(m.motif, m.level, { size: 44, title: m.title }))) : null,
       s.lines?.length ? h('ul', { class: 'xc-lines' }, s.lines.map(l => h('li', {},
         l.link && !s.link ? h('a', { class: 'tap', ...l.link }, h('span', {}, l.label), h('b', { class: l.tone || null }, l.value))
           : [h('span', {}, l.label), h('b', { class: l.tone || null }, l.value)]))) : null,
+      !s.medalsFirst && s.medals?.length ? h('div', { class: 'xc-medals small' }, s.medals.map(m => medal(m.motif, m.level, { size: 30, title: m.title }))) : null,
       s.note ? h('div', { class: 'xc-note' }, s.note) : null));
 }
 
@@ -146,16 +149,17 @@ export async function cardCanvas(s, { stamp = '' } = {}) {
       c.textAlign = 'right'; c.fillText(s.sparkLabels[1], R, y); c.textAlign = 'left';
     }
   }
-  if (s.medals?.length) {
+  const medalImgs = s.medals?.length ? await Promise.all(s.medals.slice(0, s.medalsFirst ? 10 : 8).map(medalImage)) : [];
+  if (s.medalsFirst && medalImgs.length) {
     y += 40;
-    const imgs = await Promise.all(s.medals.slice(0, 10).map(medalImage));
     const size = 160, gap = (Wd - 5 * size) / 4;
-    imgs.forEach((img, i) => { if (img) c.drawImage(img, X + (i % 5) * (size + gap), y + Math.floor(i / 5) * (size + 20), size, size); });
-    y += Math.ceil(imgs.length / 5) * (size + 20);
+    medalImgs.forEach((img, i) => { if (img) c.drawImage(img, X + (i % 5) * (size + gap), y + Math.floor(i / 5) * (size + 20), size, size); });
+    y += Math.ceil(medalImgs.length / 5) * (size + 20);
   }
+  const SMALL = 96, smallRow = !s.medalsFirst && medalImgs.length ? SMALL + 40 : 0;   // badges second: one small row
   if (s.lines?.length) {
     y += 30;
-    const bottom = CARD_H - (s.note ? 200 : 140);   // room for the note above the footer
+    const bottom = CARD_H - (s.note ? 200 : 140) - smallRow;   // room for the note and the small medals above the footer
     const room = bottom - 10 - y, step = Math.max(64, Math.min(96, room / s.lines.length));
     for (const l of s.lines) {
       if (y + step > bottom) break;
@@ -168,6 +172,10 @@ export async function cardCanvas(s, { stamp = '' } = {}) {
       c.fillStyle = C.muted; fit(c, l.label, TEXT, 40, Wd - vw - 30, '400'); c.fillText(l.label, X, base);
       y += step;
     }
+  }
+  if (smallRow) {
+    const top = Math.min(Math.max(y + 30, 0), CARD_H - (s.note ? 200 : 140) - SMALL - 10);
+    medalImgs.forEach((img, i) => { if (img) c.drawImage(img, X + i * (SMALL + 22), top, SMALL, SMALL); });
   }
   // foot: a ball and the app's name
   c.fillStyle = C.line; c.fillRect(0, CARD_H - 110, CARD_W, 2);

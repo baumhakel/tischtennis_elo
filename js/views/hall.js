@@ -6,6 +6,8 @@ import { viewHead, plainTable, tableView, linkTo } from './common.js';
 import { formatRef } from '../core/normalize.js';
 import { isoWeek } from './badge-defs.js';
 import { monthLabel } from '../core/window.js';
+import { shareButton } from '../ui/share.js';
+import { hallSpec } from './share-cards.js';
 import { serialToParts } from '../core/normalize.js';
 
 export default {
@@ -28,7 +30,7 @@ const weekGames = (ctx, id, from, to) => linkTo(ctx, 'spiele', { spieler: id, vo
 function page(ctx) {
   const A = ctx.badges;
   const cfg = ctx.baseModel.dataset.config;
-  const head = viewHead('Ruhmeshalle', 'Monatssieger, Aufsteiger jeder Woche und alle auf Platz 1.', { info: [
+  const head = viewHead('Ruhmeshalle', 'Monatssieger, Aufsteiger jeder Woche und alle auf Platz 1.', { share: A && A.monthly.some(m => m.riser || m.leader) ? shareButton(() => hallSpec(ctx, A), { name: 'ruhmeshalle' }) : null, info: [
     `Monatsaufsteiger: meiste Elo-Punkte im Kalendermonat, mit mindestens ${cfg.monthly_min_games} Spielen im Monat und ${cfg.achievement_rank_min_games} Spielen insgesamt. Platz 1 am Monatsende: der Stand um Mitternacht am letzten Tag. Beides wird erst vergeben, wenn der Monat vorbei ist. Eine Zeile öffnet die Rangliste dieses Monats.`,
     `Aufsteiger der Woche: meiste Elo-Punkte von Montag bis Sonntag, mit mindestens ${cfg.rising_star_min_games} Spielen in der Woche und mindestens ${cfg.achievement_rank_min_games} Spielen insgesamt. Vergeben wird erst, wenn die Woche vorbei ist. Gezählt werden alle Spiele, unabhängig von der Wertung.`,
     'Die Kachel „Aufsteiger (letzte 7 Tage)“ auf der Übersicht zählt dagegen immer die letzten sieben Tage bis jetzt.',

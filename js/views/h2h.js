@@ -7,6 +7,8 @@ import { lineChart } from '../ui/charts/line.js';
 import { tile, viewHead, nameOf, byName, linkTo, modeNote, missingInMode, MODE_WORD } from './common.js';
 import { avatar } from '../ui/avatar.js';
 import { duel } from './duels.js';
+import { shareButton } from '../ui/share.js';
+import { h2hSpec } from './share-cards.js';
 import { gameList } from './games.js';
 import { badgeCompare } from './badges.js';
 
@@ -39,7 +41,7 @@ export default {
           pool.filter(k => !exclude.includes(elo.ids[k]) || elo.ids[k] === value)
             .map(k => h('option', { value: elo.ids[k], selected: elo.ids[k] === value ? true : null }, nameOf(c, k))));
 
-      render(head, viewHead('Direktvergleich', null, { info: ['Zwei Spieler oder zwei Doppelteams im Vergleich. Mit je einem Partner pro Seite zählen nur Spiele genau dieser beiden Teams, ohne Partner alle Spiele, in denen die beiden Gegner waren.', 'Die Siegchance rechnet mit den heutigen Elo-Werten. In der Liste der Spiele: S = Sieg, N = Niederlage aus Sicht der linken Seite, rechts ihre Elo-Veränderung.'] }),
+      render(head, viewHead('Direktvergleich', null, { share: shareButton(() => h2hSpec(c, A, B, duel(c.model, A, B)), { name: `direktvergleich-${label(A)}-${label(B)}` }), info: ['Zwei Spieler oder zwei Doppelteams im Vergleich. Mit je einem Partner pro Seite zählen nur Spiele genau dieser beiden Teams, ohne Partner alle Spiele, in denen die beiden Gegner waren.', 'Die Siegchance rechnet mit den heutigen Elo-Werten. In der Liste der Spiele: S = Sieg, N = Niederlage aus Sicht der linken Seite, rechts ihre Elo-Veränderung.'] }),
         h('div', { class: 'toolbar duel-pick' },
           h('span', { class: 'side' }, h('span', { class: 'key', style: `background:${seriesColor(0)}` }), pick('a', a, { exclude: [b, a2, b2] }), solo ? null : pick('a2', a2, { optional: true, exclude: [a, b, b2] })),
           h('span', { class: 'vs' }, 'gegen'),

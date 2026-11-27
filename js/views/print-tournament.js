@@ -16,22 +16,28 @@ import { pickTournament } from '../app/tournaments.js';
 import { seedSlots, roundName, LETTERS } from '../core/tournament.js';
 import { sideName, MODE_TEXT, tournamentQr } from './tournament-ui.js';
 import { mountPoster } from './poster.js';
+import { mountSouvenir } from './print-souvenir.js';
 
 const MARGIN = 6, OVERLAP = 8, PAD = 8, SEAM_GAP = 6;
 const SHEET = { hoch: [297, 420], quer: [420, 297] };
 
-/** Geometry of a 2 × 2 poster: size, the sheets' windows and the four content regions (reading order). */
-export function posterGeometry(orient) {
+/**
+ * Geometry of a poster from cols × rows sheets (default 2 × 2 = A1 from four A3): size, the sheets' windows and the
+ * content regions (one per sheet, reading order: down the first column, then the next).
+ */
+export function posterGeometry(orient, cols = 2, rows = 2) {
   const [sw, sh] = SHEET[orient];
   const ww = sw - 2 * MARGIN, wh = sh - 2 * MARGIN;
-  const W = 2 * ww - OVERLAP, H = 2 * wh - OVERLAP;
-  const sx = ww - OVERLAP, sy = wh - OVERLAP;                  // where the right / lower windows start
-  const cols = [[PAD, sx - SEAM_GAP], [ww + SEAM_GAP, W - PAD]];
-  const rows = [[PAD, sy - SEAM_GAP], [wh + SEAM_GAP, H - PAD]];
-  const region = (c, r) => ({ x: cols[c][0], y: rows[r][0], w: cols[c][1] - cols[c][0], h: rows[r][1] - rows[r][0] });
-  return { orient, sw, sh, ww, wh, W, H, sx, sy,
-    regions: [region(0, 0), region(0, 1), region(1, 0), region(1, 1)],
-    sheets: [[0, 0], [1, 0], [0, 1], [1, 1]].map(([c, r], i) => ({ n: i + 1, c, r, x: c ? sx : 0, y: r ? sy : 0 })) };
+  const W = cols * ww - (cols - 1) * OVERLAP, H = rows * wh - (rows - 1) * OVERLAP;
+  const sx = ww - OVERLAP, sy = wh - OVERLAP;                  // step from one window to the next
+  const span = (i, n, step, size, total) => [i ? i * step + OVERLAP + SEAM_GAP : PAD, i < n - 1 ? i * step + step - SEAM_GAP : total - PAD];
+  const regions = [], sheets = [];
+  for (let c = 0; c < cols; c++) for (let r = 0; r < rows; r++) {
+    const [x0, x1] = span(c, cols, sx, ww, W), [y0, y1] = span(r, rows, sy, wh, H);
+    regions.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 });
+  }
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) sheets.push({ n: sheets.length + 1, c, r, x: c * sx, y: r * sy });
+  return { orient, cols, rows, sw, sh, ww, wh, W, H, sx, sy, regions, sheets };
 }
 
 /**
@@ -61,6 +67,7 @@ export default {
   title: 'Aushang',
   mount(el, ctx) {
     if (ctx.params.turnier == null) return mountPoster(el, ctx);   // Phase 19: #/aushang?monat= is the monthly poster
+    if (ctx.params.erinnerung != null) return mountSouvenir(el, ctx);   // souvenir print after the tournament
     let key = null;
     const update = c => {
       const k = [c.params.turnier, c.baseModel.dataset.hash, state.orient].join('|');
@@ -77,10 +84,6 @@ function page(el, ctx, redo) {
   const T = pickTournament(ctx.tournaments, ctx.params.turnier);
   if (!T || !T.ok) {
     render(el, viewHead('Aushang', null, { back: true }), h('p', { class: 'empty' }, T ? T.problem : 'Dieses Turnier gibt es nicht (oder es ist noch ein Entwurf).'));
-    return;
-  }
-  if (ctx.params.erinnerung != null) {
-    render(el, viewHead('Erinnerung', null, { back: true }), h('p', { class: 'empty' }, 'Der Erinnerungsdruck nach dem Turnier kommt noch.'));
     return;
   }
   const status = h('p', { class: 'muted small', 'aria-live': 'polite' }, 'Wird gesetzt …');
@@ -105,7 +108,7 @@ function page(el, ctx, redo) {
 }
 
 /** mm per CSS px (CSS defines 1 mm = 96 / 25.4 px). */
-const PX = 25.4 / 96;
+export const PX = 25.4 / 96;
 
 function layout(ctx, T, sheets, measure, status) {
   const orients = state.orient === 'auto' ? ['hoch', 'quer'] : [state.orient];
@@ -155,30 +158,33 @@ function layout(ctx, T, sheets, measure, status) {
 }
 
 /** Cut line, glue strip and page number for one sheet (coordinates inside its window). */
-function marks(g, s) {
+export function marks(g, s) {
   const out = [];
   const box = (style, cls = 'pb-mark') => h('div', { class: cls, style });
   const text = (t, style) => h('div', { class: 'pb-marktext', style }, t);
-  // glue strips: on the left sheets at their right edge, on the upper sheets at their bottom edge
-  if (s.c === 0) {
+  const cols = g.cols || 2, rows = g.rows || 2;
+  // glue strips where a neighbour is glued on (right, below), cut lines where this sheet is glued onto one (left, above)
+  if (s.c < cols - 1) {
     out.push(box(`left:${g.sx}mm;top:0;width:${OVERLAP}mm;height:${g.wh}mm`, 'pb-mark pb-glue'),
       box(`left:${g.sx}mm;top:0;width:0;height:${g.wh}mm;border-left:0.3mm solid #1D5E46`, 'pb-mark'),
       text('Klebestreifen: Blatt ' + (s.n + 1) + ' hier anlegen', `left:${g.sx - 2}mm;top:${g.wh / 2}mm;transform:translate(-100%,0) rotate(-90deg);transform-origin:100% 0`));
-  } else {
+  }
+  if (s.c > 0) {
     out.push(box(`left:0;top:0;width:0;height:${g.wh}mm;border-left:0.3mm dashed #1D5E46`, 'pb-mark'),
       text('✂ hier abschneiden', `left:1.5mm;top:${g.wh / 2}mm;transform:rotate(90deg);transform-origin:0 0`));
   }
-  if (s.r === 0) {
+  if (s.r < rows - 1) {
     out.push(box(`left:0;top:${g.sy}mm;width:${g.ww}mm;height:${OVERLAP}mm`, 'pb-mark pb-glue'),
       box(`left:0;top:${g.sy}mm;width:${g.ww}mm;height:0;border-top:0.3mm solid #1D5E46`, 'pb-mark'),
-      text('Klebestreifen: Blatt ' + (s.n + 2) + ' hier anlegen', `left:${g.ww / 2}mm;top:${g.sy - 4}mm;transform:translateX(-50%)`));
-  } else {
+      text('Klebestreifen: Blatt ' + (s.n + cols) + ' hier anlegen', `left:${g.ww / 2}mm;top:${g.sy - 4}mm;transform:translateX(-50%)`));
+  }
+  if (s.r > 0) {
     out.push(box(`left:0;top:0;width:${g.ww}mm;height:0;border-top:0.3mm dashed #1D5E46`, 'pb-mark'),
       text('✂ hier abschneiden', `left:${g.ww / 2}mm;top:1mm;transform:translateX(-50%)`));
   }
-  // page number in the outer corner (never under another sheet)
-  const pos = `${s.c ? 'right' : 'left'}:0.8mm;${s.r ? 'bottom' : 'top'}:0.6mm`;   // outside the poster frame (4.4 mm)
-  out.push(h('div', { class: 'pb-pageno', style: pos }, `${s.n} / 4`));
+  // page number in an outer corner (never under another sheet)
+  const pos = `${s.c === cols - 1 && cols > 1 ? 'right' : 'left'}:0.8mm;${s.r === rows - 1 && rows > 1 ? 'bottom' : 'top'}:0.6mm`;
+  out.push(h('div', { class: 'pb-pageno', style: pos }, `${s.n} / ${cols * rows}`));
   return out;
 }
 
@@ -186,7 +192,7 @@ function marks(g, s) {
 
 // Colours (Phase 18c, rework 27 Nov): one accent per section, each with a pale tint and a fainter one. Ink goes into
 // lines, type and small marks; areas get only the pale tints (low ink, but not just white).
-const ACCENTS = [
+export const ACCENTS = [
   ['#1D6B4F', '#E2F1EA', '#F4FAF7'],   // green
   ['#2563A6', '#E3EDF8', '#F5F9FD'],   // blue
   ['#C2571A', '#FCEADC', '#FEF7F1'],   // orange
@@ -196,8 +202,8 @@ const ACCENTS = [
   ['#6E7F1F', '#EEF2DC', '#F8FAF0'],   // olive
   ['#8A5A2B', '#F3E9DE', '#FAF6F1'],   // brown
 ];
-const GOLD = ['#9A7300', '#FAF0D2', '#FDF9EC'];
-const accent = ([c, t, f]) => `--c:${c};--t:${t};--f:${f}`;
+export const GOLD = ['#9A7300', '#FAF0D2', '#FDF9EC'];
+export const accent = ([c, t, f]) => `--c:${c};--t:${t};--f:${f}`;
 
 function buildBlocks(ctx, T, width, scale) {
   const blocks = [{ el: head(ctx, T) }];
@@ -229,12 +235,12 @@ function buildBlocks(ctx, T, width, scale) {
 }
 
 /** Section heading: a small badge (group letter, round, cup) in the accent, the title, a fine rule. */
-const heading = (title, badge) => h('h3', { class: 'pb-h3' }, badge != null ? h('span', { class: 'pb-badge' }, badge) : null, h('span', {}, title));
+export const heading = (title, badge) => h('h3', { class: 'pb-h3' }, badge != null ? h('span', { class: 'pb-badge' }, badge) : null, h('span', {}, title));
 
-const block = (title, body, acc = ACCENTS[0], badge = null) => h('section', { class: 'pb-block', style: accent(acc) }, title ? heading(title, badge) : null, body);
+export const block = (title, body, acc = ACCENTS[0], badge = null) => h('section', { class: 'pb-block', style: accent(acc) }, title ? heading(title, badge) : null, body);
 
 const NS = 'http://www.w3.org/2000/svg';
-function svg(viewBox, cls, parts) {
+export function svg(viewBox, cls, parts) {
   const el = document.createElementNS(NS, 'svg');
   el.setAttribute('viewBox', viewBox); el.setAttribute('class', cls); el.setAttribute('aria-hidden', 'true');
   for (const [tag, attrs] of parts) {
@@ -246,13 +252,13 @@ function svg(viewBox, cls, parts) {
 }
 
 /** A small cup (knockout badge), drawn in the current colour. */
-const cup = () => svg('0 0 24 24', 'pb-cup', [
+export const cup = () => svg('0 0 24 24', 'pb-cup', [
   ['path', { d: 'M7 3h10v5a5 5 0 0 1-10 0z', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linejoin': 'round' }],
   ['path', { d: 'M7 5H4v1a3 3 0 0 0 3 3M17 5h3v1a3 3 0 0 1-3 3M12 13v4M8 21h8M9 17h6', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round' }],
 ]);
 
 /** The head's picture: a table from above (outline), the net, a racket and a ball in the accent colours. */
-const tableArt = () => svg('0 0 120 64', 'pb-art', [
+export const tableArt = () => svg('0 0 120 64', 'pb-art', [
   ['rect', { x: '4', y: '8', width: '92', height: '50', rx: '3', fill: '#E2F1EA', stroke: '#1D6B4F', 'stroke-width': '1.6' }],
   ['line', { x1: '4', y1: '33', x2: '96', y2: '33', stroke: '#1D6B4F', 'stroke-width': '0.8' }],
   ['line', { x1: '50', y1: '4', x2: '50', y2: '62', stroke: '#1D6B4F', 'stroke-width': '2.4', 'stroke-dasharray': '1.2 1.6' }],
@@ -361,4 +367,4 @@ function knockout(ctx, T) {
     r.ms.map(m => matchBox(ctx, T, m, { label: m.third ? `Platz 3 · Best of ${m.bestOf}` : `Best of ${m.bestOf}` })))));
 }
 
-export { LETTERS };
+export { LETTERS, SHEET, MARGIN, OVERLAP };

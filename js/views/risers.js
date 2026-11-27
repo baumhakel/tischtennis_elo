@@ -3,6 +3,8 @@ import { h, render } from '../ui/dom.js';
 import * as fmt from '../ui/format.js';
 import { viewHead, nameOf, plainTable, linkTo } from './common.js';
 import { risers } from './insights.js';
+import { shareButton } from '../ui/share.js';
+import { risersSpec } from './share-cards.js';
 
 export default {
   id: 'aufsteiger',
@@ -23,7 +25,7 @@ function page(ctx) {
   const winner = rows.find(ok);
   const span = days === 7 ? 'der letzten sieben Tage' : `der letzten ${days} Tage`;   // rolling window up to now
   return [
-    viewHead('Aufsteiger', `Elo-Veränderung ${span}.`, { info: [`Gezählt wird seit ${fmt.when(r.from, ctx.now)} Uhr: Elo-Wert jetzt minus Elo-Wert davor. Hervorgehoben (und auf der Übersicht gezeigt) wird, wer am meisten gewonnen hat, mit mindestens ${min} Spielen in dieser Zeit und ohne vorläufige Wertung.`,
+    viewHead('Aufsteiger', `Elo-Veränderung ${span}.`, { share: winner && winner.delta > 0 ? shareButton(() => risersSpec(ctx, winner, rows.filter(ok), days), { name: `aufsteiger-${nameOf(ctx, winner.k)}` }) : null, info: [`Gezählt wird seit ${fmt.when(r.from, ctx.now)} Uhr: Elo-Wert jetzt minus Elo-Wert davor. Hervorgehoben (und auf der Übersicht gezeigt) wird, wer am meisten gewonnen hat, mit mindestens ${min} Spielen in dieser Zeit und ohne vorläufige Wertung.`,
       h('p', {}, 'Das Abzeichen „Aufsteiger der Woche“ zählt dagegen Kalenderwochen von Montag bis Sonntag und wird erst vergeben, wenn die Woche vorbei ist. Alle Gewinner stehen in der ', h('a', { ...linkTo(ctx, 'ruhmeshalle') }, 'Ruhmeshalle'), '.'),
       'Tippe auf eine Zeile für die Spiele dieser Zeit.'] }),
     h('nav', { class: 'links' }, h('a', { class: 'tap', ...linkTo(ctx, 'ruhmeshalle') }, 'Ruhmeshalle: Aufsteiger jeder Kalenderwoche')),

@@ -2,6 +2,8 @@
 import { h, render } from '../ui/dom.js';
 import * as fmt from '../ui/format.js';
 import { viewHead, linkTo } from './common.js';
+import { shareButton } from '../ui/share.js';
+import { upsetSpec } from './share-cards.js';
 
 export default {
   id: 'upsets',
@@ -21,7 +23,7 @@ function page(ctx) {
   const team = ids => ids.map(id => names.get(id) ?? id).join(' & ');
   const list = Array.from(up.order.slice(0, config.upsets_list_length));
   return [
-    viewHead('Überraschungen', `Die ${list.length} unwahrscheinlichsten Siege.`, { info: 'Spiele, in denen der Sieger laut den Elo-Werten vor dem Spiel die kleinste Siegchance hatte. Im Doppel zählt der Mittelwert der beiden Partner.' }),
+    viewHead('Überraschungen', `Die ${list.length} unwahrscheinlichsten Siege.`, { share: list.length ? shareButton(() => upsetSpec(ctx, list), { name: 'ueberraschung' }) : null, info: 'Spiele, in denen der Sieger laut den Elo-Werten vor dem Spiel die kleinste Siegchance hatte. Im Doppel zählt der Mittelwert der beiden Partner.' }),
     h('ol', { class: 'upsets' }, list.map(g => {
       const x = games[g];
       return h('li', { class: 'linked' }, h('a', { class: 'row tap', ...linkTo(ctx, 'spiel', { ref: x.ref }) },

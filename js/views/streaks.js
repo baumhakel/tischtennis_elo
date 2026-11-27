@@ -3,6 +3,8 @@ import { h, render } from '../ui/dom.js';
 import * as fmt from '../ui/format.js';
 import { viewHead, nameOf, plainTable, linkTo } from './common.js';
 import { streaks, ownRange } from './insights.js';
+import { shareButton } from '../ui/share.js';
+import { streakSpec } from './share-cards.js';
 
 export default {
   id: 'serien',
@@ -33,8 +35,9 @@ function page(ctx) {
           list.map(s => linkTo(ctx, 'spiele', ownRange(model, s.k, model.elo.lastG[s.k], s.n))))
       : h('p', { class: 'muted' }, 'Gerade niemand.'),
   ];
+  const top = first(all.filter(s => s.win))[0];
   return [
-    viewHead('Serien', 'Wer gerade gewinnt oder verliert.', { info: 'Wie viele Spiele in Folge jemand zuletzt gewonnen oder verloren hat, Einzel und Doppel zusammen (in den Wertungen „Einzel“ und „Doppel“ nur diese). Tippe auf eine Zeile für die Spiele der Serie.' }),
+    viewHead('Serien', 'Wer gerade gewinnt oder verliert.', { share: top && top.n >= 2 ? shareButton(() => streakSpec(ctx, top), { name: `serie-${nameOf(ctx, top.k)}` }) : null, info: 'Wie viele Spiele in Folge jemand zuletzt gewonnen oder verloren hat, Einzel und Doppel zusammen (in den Wertungen „Einzel“ und „Doppel“ nur diese). Tippe auf eine Zeile für die Spiele der Serie.' }),
     section('Siegesserien', first(all.filter(s => s.win)), 'Siege in Folge'),
     section('Niederlagenserien', first(all.filter(s => !s.win)), 'Niederlagen in Folge'),
     h('nav', { class: 'links' }, h('a', { class: 'tap', ...linkTo(ctx, 'records') }, 'Die längsten Serien aller Zeiten: Rekorde')),

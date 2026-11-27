@@ -11,6 +11,8 @@ import { pickTournament, entryOpen, suggestionsFor } from '../app/tournaments.js
 import { timeLeft, drawText } from '../core/tournament.js';
 import { canManage, formReady, TOURNAMENT_STEPS, tournamentSteps } from '../app/forms.js';
 import { openSheet } from '../ui/sheet.js';
+import { shareButton } from '../ui/share.js';
+import { tournamentSpec } from './share-cards.js';
 import { sideLabel, sideName, matchList, groupTableView, bracketView, swissView, swissTable, potReveal, potSummary, plural,
   STATUS_TEXT, MODE_TEXT, qrDetails } from './tournament-ui.js';
 import { photoStrip, thumbButton, showPhotos } from './photo-ui.js';
@@ -42,7 +44,8 @@ function page(ctx, rerender) {
   }
   const swissMode = T.mode === 'schweizer';
   const head = viewHead(T.name, [T.date != null ? fmt.date(T.date) : null, STATUS_TEXT[T.status], T.ok ? MODE_TEXT(T) : null].filter(Boolean).join(' · '), {
-    back: fromList || (ctx.tournaments?.actives.length || 0) > 1, key: 'turnier', info: swissMode ? [
+    back: fromList || (ctx.tournaments?.actives.length || 0) > 1, key: 'turnier',
+    share: T.ok && T.winner ? shareButton(() => tournamentSpec(ctx, T, sideName), { name: `${T.name}-sieg` }) : null, info: swissMode ? [
       'Schweizer System: in jeder Runde spielt, wer gleich viele Siege und Niederlagen hat, gegeneinander (der Beste gegen den Schwächsten der Gruppe, möglichst ohne Wiederholung). Wer 3 Siege hat, ist weiter, wer 3 Niederlagen hat, ist ausgeschieden.',
       'Geht eine Gruppe nicht auf, spielt der Letzte eine Gruppe tiefer mit. Ist die Gesamtzahl ungerade, bekommt einer ein Freilos, das als Sieg zählt. So verliert niemand, ohne gespielt zu haben.',
       'Die nächste Runde erscheint, sobald alle Spiele der Runde eingetragen sind. Eine spätere Korrektur ändert die Bilanz, aber nie, wer schon gegen wen spielt.',
@@ -96,7 +99,8 @@ function page(ctx, rerender) {
     photoStrip(ctx, 'turnier', T.id, { title: 'Fotos vom Turnier' }),
     !potsLive ? potSummary(ctx, T) : null,
     qrDetails(ctx, `#/turnier?id=${encodeURIComponent(T.id)}`, 'QR-Code für dieses Turnier', T.name),
-    h('p', { class: 'small' }, h('a', { class: 'inline-link', ...linkTo(ctx, 'aushang', { turnier: T.id }) }, 'Aushang zum Ausdrucken (A1 aus vier A3-Blättern)')),
+    h('p', { class: 'small' }, h('a', { class: 'inline-link', ...linkTo(ctx, 'aushang', { turnier: T.id }) }, 'Aushang zum Ausdrucken (A1 aus vier A3-Blättern)'),
+      T.played ? [' · ', h('a', { class: 'inline-link', ...linkTo(ctx, 'aushang', { turnier: T.id, erinnerung: '1' }) }, 'Erinnerung zum Ausdrucken (bunt, mit Fotos)')] : null),
     issues(T),
     manage,
     h('p', { class: 'muted small' }, h('a', { class: 'inline-link', ...linkTo(ctx, 'spiele', { quelle: 'turnier' }) }, 'Alle Turnierspiele, die für Elo zählen'),

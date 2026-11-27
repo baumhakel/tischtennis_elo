@@ -4,6 +4,8 @@ import { h, render } from '../ui/dom.js';
 import * as fmt from '../ui/format.js';
 import { tile, viewHead, nameOf, tableView, linkTo, profileLink } from './common.js';
 import { ownRange } from './insights.js';
+import { shareButton } from '../ui/share.js';
+import { recordsSpec } from './share-cards.js';
 
 export default {
   id: 'records',
@@ -31,7 +33,8 @@ function page(ctx) {
   const span = (k, endG, len) => { const p = endG >= 0 ? ownRange(model, k, endG, len) : null; return p ? linkTo(ctx, 'spiele', p) : null; };
   const ranks = k => linkTo(ctx, 'rank', {}, { focus: [elo.ids[k]] });
   const T = [];
-  const add = (cond, spec) => { if (cond) T.push(tile(spec)); };
+  const specs = [];
+  const add = (cond, spec) => { if (cond) { T.push(tile(spec)); specs.push(spec); } };
 
   let k = best(r.highest);
   add(k >= 0, { label: 'Höchster Elo-Wert', value: fmt.elo(r.highest[k]), who: who(k), sub: when(r.highestG[k]), link: game(r.highestG[k]) });
@@ -77,7 +80,7 @@ function page(ctx) {
 
   const sorted = ks.slice().sort((a, b) => elo.final[b] - elo.final[a]);
   return h('div', { class: 'records' },
-    viewHead('Rekorde', null, { info: [win ? `Nur Spiele im Zeitraum ${ctx.window.label}. Die Elo-Werte laufen durch. Rekorde zu Platz 1 gibt es nur ohne Zeitraum, weil dafür alle Spieler zählen, auch die, die im Zeitraum nicht gespielt haben.` : null, `Berücksichtigt werden Spieler mit mindestens ${filters.minGames} Spielen. Auch bei den Platz-Rekorden zählt der Rang erst ab dieser Zahl.`, 'Bei den Altdaten sind die Daten geschätzt („ca.“). Tippe auf einen Rekord für das Spiel oder die Spiele dahinter.'] }),
+    viewHead('Rekorde', null, { share: specs.length ? shareButton(() => recordsSpec(ctx, specs), { name: 'rekorde' }) : null, info: [win ? `Nur Spiele im Zeitraum ${ctx.window.label}. Die Elo-Werte laufen durch. Rekorde zu Platz 1 gibt es nur ohne Zeitraum, weil dafür alle Spieler zählen, auch die, die im Zeitraum nicht gespielt haben.` : null, `Berücksichtigt werden Spieler mit mindestens ${filters.minGames} Spielen. Auch bei den Platz-Rekorden zählt der Rang erst ab dieser Zahl.`, 'Bei den Altdaten sind die Daten geschätzt („ca.“). Tippe auf einen Rekord für das Spiel oder die Spiele dahinter.'] }),
     h('div', { class: 'tiles' }, T),
     tableView('Alle Spieler als Tabelle anzeigen', ['Spieler', 'Höchster', 'Tiefster', 'Siegesserie', 'Niederlagenserie', ...(win ? [] : ['Tage auf Platz 1'])],
       sorted.map(k => [who(k), fmt.elo(r.highest[k]), fmt.elo(r.lowest[k]), String(r.longestWin[k]), String(r.longestLoss[k]), ...(win ? [] : [String(Math.round(r.leaderDays[k]))])]),

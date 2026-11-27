@@ -89,7 +89,7 @@ function page(el, ctx, redo) {
     h('div', { class: 'pb-intro' },
       h('p', {}, h('a', { class: 'inline-link', ...linkTo(ctx, 'turnier', { id: T.id }) }, `‹ ${T.name}`)),
       h('h2', {}, 'Aushang zum Ausdrucken'),
-      h('p', { class: 'small' }, 'Vier A3-Blätter ergeben zusammen etwa A1. Drucken mit „Tatsächliche Größe“ / 100 %, Ränder „Keine“. Dann bei den rechten Blättern den linken Rand und bei den unteren den oberen Rand an der gestrichelten Linie abschneiden und auf den Klebestreifen des Nachbarblatts kleben.'),
+      h('p', { class: 'small' }, 'Vier A3-Blätter ergeben zusammen etwa A1. Drucken mit „Tatsächliche Größe“ / 100 %, Ränder „Keine“, „Hintergrundgrafiken“ an (für die hellen Farbflächen). Dann bei den rechten Blättern den linken Rand und bei den unteren den oberen Rand an der gestrichelten Linie abschneiden und auf den Klebestreifen des Nachbarblatts kleben.'),
       h('p', { class: 'small' }, 'Die QR-Codes vorher mit dem Handy testen (Seite „QR-Test“). Ergebnisse trägt man über die Codes in der App ein, der Aushang ist zum Mitschreiben.'),
       h('div', { class: 'pb-tools' }, seg, h('button', { type: 'button', onclick: () => window.print() }, 'Drucken')),
       status),
@@ -113,9 +113,9 @@ function layout(ctx, T, sheets, measure, status) {
       const g = posterGeometry(o);
       const width = Math.min(g.regions[0].w, g.regions[2].w);
       const blocks = buildBlocks(ctx, T, width, scale);
-      const probe = h('h3', {}, 'Fortsetzung');
+      const probe = heading('Gruppe A, Spiele (Fortsetzung)', 'A');   // same element as a real continuation heading
       render(measure, h('div', { class: 'pb-poster', style: `font-size:${4 * scale}mm` }, blocks.map(b => h('div', { style: `width:${width}mm` }, b.el)), h('div', { style: `width:${width}mm` }, probe)));
-      const titleH = probe.getBoundingClientRect().height * PX + 2 * scale;
+      const titleH = (probe.getBoundingClientRect().height + parseFloat(getComputedStyle(probe).marginBottom)) * PX + 0.5;
       const items = blocks.map(b => ({ h: b.el.getBoundingClientRect().height * PX, gap: (b.cont ? 0 : 7) * scale, title: b.cont ? titleH : 0 }));
       const packed = packBlocks(items, g.regions);
       if (packed) { chosen = { g, blocks, packed, scale }; break; }
@@ -128,7 +128,7 @@ function layout(ctx, T, sheets, measure, status) {
   const poster = h('div', { class: 'pb-poster', style: `width:${g.W}mm;height:${g.H}mm;font-size:${4 * scale}mm` });
   const regions = g.regions.map(r => h('div', { class: 'pb-region', style: `left:${r.x}mm;top:${r.y}mm;width:${r.w}mm;height:${r.h}mm` }));
   blocks.forEach((b, i) => {
-    const p = packed[i], el = p.cont ? h('section', {}, h('h3', {}, b.cont), b.el) : b.el;
+    const p = packed[i], el = p.cont ? h('section', { class: 'pb-block', style: b.el.getAttribute('style') }, heading(b.cont, b.badge), b.el) : b.el;
     el.style.position = 'absolute'; el.style.top = `${p.top}mm`; el.style.width = '100%';
     regions[p.region].append(el);
   });
@@ -175,49 +175,105 @@ function marks(g, s) {
       text('✂ hier abschneiden', `left:${g.ww / 2}mm;top:1mm;transform:translateX(-50%)`));
   }
   // page number in the outer corner (never under another sheet)
-  const pos = `${s.c ? 'right' : 'left'}:2mm;${s.r ? 'bottom' : 'top'}:1.5mm`;
+  const pos = `${s.c ? 'right' : 'left'}:0.8mm;${s.r ? 'bottom' : 'top'}:0.6mm`;   // outside the poster frame (4.4 mm)
   out.push(h('div', { class: 'pb-pageno', style: pos }, `${s.n} / 4`));
   return out;
 }
 
 // ───────── the blocks ─────────
 
+// Colours (Phase 18c, rework 27 Nov): one accent per section, each with a pale tint and a fainter one. Ink goes into
+// lines, type and small marks; areas get only the pale tints (low ink, but not just white).
+const ACCENTS = [
+  ['#1D6B4F', '#E2F1EA', '#F4FAF7'],   // green
+  ['#2563A6', '#E3EDF8', '#F5F9FD'],   // blue
+  ['#C2571A', '#FCEADC', '#FEF7F1'],   // orange
+  ['#7048A8', '#EEE7F7', '#F9F6FC'],   // violet
+  ['#B4364A', '#F9E3E7', '#FDF4F6'],   // raspberry
+  ['#127A80', '#DDF1F2', '#F3FAFA'],   // teal
+  ['#6E7F1F', '#EEF2DC', '#F8FAF0'],   // olive
+  ['#8A5A2B', '#F3E9DE', '#FAF6F1'],   // brown
+];
+const GOLD = ['#9A7300', '#FAF0D2', '#FDF9EC'];
+const accent = ([c, t, f]) => `--c:${c};--t:${t};--f:${f}`;
+
 function buildBlocks(ctx, T, width, scale) {
   const blocks = [{ el: head(ctx, T) }];
-  const add = (title, body) => blocks.push({ el: block(title, body) });
+  const add = (title, body, acc, badge) => blocks.push({ el: block(title, body, acc, badge) });
   // match lists in small pieces (two rows each), so they fill the quarters; a piece at the top of a quarter gets a heading
-  const chunk = (title, ms) => { for (let i = 0; i < ms.length; i += 2) blocks.push({ el: matchRows(ctx, T, ms.slice(i, i + 2)), cont: i ? `${title} (Fortsetzung)` : title }); };
+  const chunk = (title, ms, acc, badge) => {
+    for (let i = 0; i < ms.length; i += 2) {
+      blocks.push({ el: h('div', { class: 'pb-block', style: accent(acc) }, matchRows(ctx, T, ms.slice(i, i + 2), i)), cont: i ? `${title} (Fortsetzung)` : title, badge });
+    }
+  };
   if (T.mode === 'gruppen') {
     for (const t of T.tables) {
+      const acc = ACCENTS[t.group % ACCENTS.length];
       const ms = T.matches.filter(m => m.stage === 'gruppe' && m.group === t.group);
       add(`Gruppe ${t.letter}`, [groupMatrix(ctx, T, t), groupTable(ctx, T, t),
-        h('p', { class: 'pb-small' }, `${t.advance} ${t.advance === 1 ? 'kommt' : 'kommen'} weiter · Best of ${T.settings.bestOf.gruppe}`)]);
-      chunk(`Gruppe ${t.letter}, Spiele`, ms);
+        h('p', { class: 'pb-small' }, `${t.advance} ${t.advance === 1 ? 'kommt' : 'kommen'} weiter · Best of ${T.settings.bestOf.gruppe}`)], acc, t.letter);
+      chunk(`Gruppe ${t.letter}, Spiele`, ms, acc, t.letter);
     }
   } else {
+    const acc = ACCENTS[1];
     const r1 = T.swiss.rounds[0];
     add('Schweizer Runde 1', [h('p', { class: 'pb-small' }, swissRule(T)),
-      r1.byes.length ? h('p', {}, 'Freilos: ', r1.byes.map(k => sideName(ctx, T.participants.find(p => p.key === k))).join(', ')) : null]);
-    chunk('Runde 1', r1.nrs.map(nr => T.matches[nr - 1]));
-    add('Schweizer Runden 2 und weiter', swissDiagram(T));
+      r1.byes.length ? h('p', {}, 'Freilos: ', r1.byes.map(k => sideName(ctx, T.participants.find(p => p.key === k))).join(', ')) : null], acc, '1');
+    chunk('Runde 1', r1.nrs.map(nr => T.matches[nr - 1]), acc, '1');
+    add('Schweizer Runden 2 und weiter', swissDiagram(T), ACCENTS[5], '2+');
   }
-  add('K.-o.-Runde', knockout(ctx, T, width));
+  add('K.-o.-Runde', knockout(ctx, T, width), GOLD, cup());
   return blocks;
 }
 
-const block = (title, body) => h('section', { class: 'pb-block' }, title ? h('h3', {}, title) : null, body);
+/** Section heading: a small badge (group letter, round, cup) in the accent, the title, a fine rule. */
+const heading = (title, badge) => h('h3', { class: 'pb-h3' }, badge != null ? h('span', { class: 'pb-badge' }, badge) : null, h('span', {}, title));
+
+const block = (title, body, acc = ACCENTS[0], badge = null) => h('section', { class: 'pb-block', style: accent(acc) }, title ? heading(title, badge) : null, body);
+
+const NS = 'http://www.w3.org/2000/svg';
+function svg(viewBox, cls, parts) {
+  const el = document.createElementNS(NS, 'svg');
+  el.setAttribute('viewBox', viewBox); el.setAttribute('class', cls); el.setAttribute('aria-hidden', 'true');
+  for (const [tag, attrs] of parts) {
+    const x = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) x.setAttribute(k, v);
+    el.append(x);
+  }
+  return el;
+}
+
+/** A small cup (knockout badge), drawn in the current colour. */
+const cup = () => svg('0 0 24 24', 'pb-cup', [
+  ['path', { d: 'M7 3h10v5a5 5 0 0 1-10 0z', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linejoin': 'round' }],
+  ['path', { d: 'M7 5H4v1a3 3 0 0 0 3 3M17 5h3v1a3 3 0 0 1-3 3M12 13v4M8 21h8M9 17h6', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round' }],
+]);
+
+/** The head's picture: a table from above (outline), the net, a racket and a ball in the accent colours. */
+const tableArt = () => svg('0 0 120 64', 'pb-art', [
+  ['rect', { x: '4', y: '8', width: '92', height: '50', rx: '3', fill: '#E2F1EA', stroke: '#1D6B4F', 'stroke-width': '1.6' }],
+  ['line', { x1: '4', y1: '33', x2: '96', y2: '33', stroke: '#1D6B4F', 'stroke-width': '0.8' }],
+  ['line', { x1: '50', y1: '4', x2: '50', y2: '62', stroke: '#1D6B4F', 'stroke-width': '2.4', 'stroke-dasharray': '1.2 1.6' }],
+  ['circle', { cx: '74', cy: '20', r: '3.6', fill: '#F28C28' }],
+  ['path', { d: 'M78 21 q6 -2 9 1', fill: 'none', stroke: '#F28C28', 'stroke-width': '0.8', 'stroke-dasharray': '1.4 1.4' }],
+  ['circle', { cx: '104', cy: '42', r: '11', fill: '#F9E3E7', stroke: '#B4364A', 'stroke-width': '1.6' }],
+  ['rect', { x: '99', y: '50', width: '4.5', height: '12', rx: '1.8', transform: 'rotate(35 101 56)', fill: '#8A5A2B' }],
+]);
 
 function head(ctx, T) {
-  const bits = [T.date != null ? fmt.date(T.date) : null, MODE_TEXT(T), `${T.participants.length} ${T.art === 'doppel' ? 'Teams' : 'Teilnehmer'}`, `Sätze bis ${T.points}`];
-  return h('section', { class: 'pb-block pb-head' },
-    h('div', {},
+  const chips = [T.date != null ? fmt.date(T.date) : null, T.art === 'doppel' ? 'Doppel' : 'Einzel',
+    T.mode === 'schweizer' ? 'Schweizer System + K.-o.' : 'Gruppen + K.-o.', `${T.participants.length} ${T.art === 'doppel' ? 'Teams' : 'Teilnehmer'}`, `Sätze bis ${T.points}`];
+  return h('section', { class: 'pb-block pb-head', style: accent(ACCENTS[0]) },
+    h('div', { class: 'pb-head-main' },
+      h('div', { class: 'pb-kicker' }, 'Tischtennis · Turnier'),
       h('h2', {}, T.name),
-      h('p', {}, bits.filter(Boolean).join(' · ')),
-      h('p', { class: 'pb-small' }, 'Ergebnis eintragen: den QR-Code des Spiels scannen (oder rechts den des Turniers) und die Sätze in der App eintragen. Es gilt immer der letzte Eintrag eines Spiels.'),
-      h('p', { class: 'pb-small' }, T.started != null ? `Auslosung fest seit ${fmt.date(T.started)}.`
-        : T.status === 'angekündigt' || T.status === 'test' ? `Stand der Auslosung: ${fmt.date(ctx.now)}, ${fmt.time(ctx.now)} Uhr (kann sich bis zum Start noch ändern).`
-          : `Gedruckt ${fmt.date(ctx.now)}, ${fmt.time(ctx.now)} Uhr.`)),
-    h('div', {}, tournamentQr(ctx, `#/turnier?id=${encodeURIComponent(T.id)}`, T.name), h('div', { class: 'pb-qrcap' }, 'Turnier in der App')));
+      h('div', { class: 'pb-chips' }, chips.filter(Boolean).map(c => h('span', { class: 'pb-chip' }, c))),
+      h('div', { class: 'pb-howto' }, tableArt(), h('div', {},
+        h('p', {}, h('strong', {}, 'Ergebnis eintragen: '), 'QR-Code des Spiels scannen (oder rechts den des Turniers), Sätze in der App eintragen. Es gilt immer der letzte Eintrag eines Spiels.'),
+        h('p', { class: 'pb-small' }, T.started != null ? `Auslosung fest seit ${fmt.date(T.started)}.`
+          : T.status === 'angekündigt' || T.status === 'test' ? `Stand der Auslosung: ${fmt.date(ctx.now)}, ${fmt.time(ctx.now)} Uhr (kann sich bis zum Start noch ändern).`
+            : `Gedruckt ${fmt.date(ctx.now)}, ${fmt.time(ctx.now)} Uhr.`)))),
+    h('div', { class: 'pb-head-qr' }, tournamentQr(ctx, `#/turnier?id=${encodeURIComponent(T.id)}`, T.name), h('div', { class: 'pb-qrcap' }, 'Turnier in der App')));
 }
 
 const nameOf = (ctx, T, key) => sideName(ctx, T.participants.find(p => p.key === key));
@@ -232,21 +288,21 @@ function groupMatrix(ctx, T, t) {
 function groupTable(ctx, T, t) {
   return h('table', { class: 'pb-table' },
     h('tr', {}, ['Platz', 'Name', 'Siege', 'Sätze', 'Punkte'].map(x => h('th', {}, x))),
-    T.groups[t.group].keys.map(() => h('tr', {}, h('td', { class: 'box' }), h('td', { class: 'name' }), h('td', { class: 'box' }), h('td', { class: 'box' }), h('td', { class: 'box' }))));
+    T.groups[t.group].keys.map((_, i) => h('tr', { class: i < t.advance ? 'up' : '' }, h('td', { class: 'box place' }, `${i + 1}.`), h('td', { class: 'name' }), h('td', { class: 'box' }), h('td', { class: 'box' }), h('td', { class: 'box' }))));
 }
 
 /** Match rows: number, both sides (names or where they come from), a box per set, the match's QR code. */
-function matchRows(ctx, T, ms) {
-  return h('div', { class: 'pb-matches' }, ms.map(m => matchBox(ctx, T, m)));
+function matchRows(ctx, T, ms, from = 0) {
+  return h('div', { class: 'pb-matches' }, ms.map((m, i) => matchBox(ctx, T, m, { odd: (from + i) % 2 === 1 })));
 }
 
-function matchBox(ctx, T, m, { label = null } = {}) {
+function matchBox(ctx, T, m, { label = null, odd = false } = {}) {
   const side = s => h('div', { class: 'pb-side' }, s.key ? sideName(ctx, s) : '',
     s.from && m.stage === 'ko' ? h('span', { class: 'from' }, s.from) : null);
-  return h('div', { class: 'pb-match' },
-    h('div', { class: 'pb-nr' }, m.nr ? String(m.nr) : '___', h('small', {}, label || `Best of ${m.bestOf}`)),
+  return h('div', { class: 'pb-match' + (odd ? ' odd' : '') + (m.label === 'Finale' ? ' final' : '') },
+    h('div', { class: 'pb-nr' }, h('span', { class: 'pb-nr-n' }, m.nr ? String(m.nr) : ''), h('small', {}, label || `Best of ${m.bestOf}`)),
     h('div', { class: 'pb-sides' }, side(m.a), side(m.b)),
-    h('div', { class: 'pb-sets' }, Array.from({ length: m.bestOf || 3 }, () => h('div', { class: 'pb-set' }, h('span'), h('span')))),
+    h('div', { class: 'pb-sets' }, Array.from({ length: m.bestOf || 3 }, (_, i) => h('div', { class: 'pb-set' }, h('i', {}, String(i + 1)), h('span'), h('span')))),
     m.nr ? tournamentQr(ctx, `#/turnierspiel?id=${encodeURIComponent(T.id)}&nr=${m.nr}`, `Spiel ${m.nr}`, { ecl: 'M' }) : h('div'));
 }
 
@@ -267,7 +323,7 @@ function swissDiagram(T) {
       if (l >= L) continue;
       const players = n * choose(r - 1, w) / 2 ** (r - 1);
       const lines = Math.max(1, Math.ceil(players / 2));
-      pools.push(h('div', { class: 'pb-pool' }, h('b', {}, `${w}–${l}`),
+      pools.push(h('div', { class: 'pb-pool' + (w === W - 1 || l === L - 1 ? ' decisive' : '') }, h('b', {}, `${w}–${l}`),
         Array.from({ length: lines }, () => h('div', { class: 'pb-line' }, 'Spiel ___'))));
     }
     cols.push(h('div', {}, h('h4', {}, `Runde ${r}`), pools));

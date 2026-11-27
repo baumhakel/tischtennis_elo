@@ -155,6 +155,8 @@ export const CONFIG_DEFAULTS = {
   tournament_suggestions:        { type: 'integer', value: 3,  min: 1, max: 8 },   // „Als Nächstes“ on the tournament page
   tournament_game_minutes:       { type: 'integer', value: 12, min: 3 },           // time estimate until enough results are in
   tournament_card_days:          { type: 'integer', value: 7, min: 0, max: 60 },    // Phase 18c: Übersicht card with the winner, days after the end
+  poster_masthead:               { type: 'string',  value: 'Netzkante' },          // Phase 19: name of the monthly wall newspaper
+  poster_max_badges:             { type: 'integer', value: 12, min: 1, max: 40 },  // Phase 19: badge groups shown on the poster
   qr_style:                      { type: 'string',  value: 'rund' },               // Phase 18c: QR code modules: rund · punkte · eckig
   qr_eyes:                       { type: 'string',  value: 'schlaeger' },          // Phase 18c: QR code eyes: schlaeger (ring + racket) · schlaeger-rund · quadrat
   // Phase 17: usage counting (app/usage.js) via the hidden „Nutzung“ form. optional: empty = no counting

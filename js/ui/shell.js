@@ -291,7 +291,9 @@ export function createShell(root, { store, actions }) {
            h('button', { class: 'link', type: 'button', onclick: () => { closeMenu(); actions.signOut(); } }, 'Abmelden')]
         : h('button', { class: 'link', type: 'button', onclick: () => { closeMenu(); actions.signIn(); } }, 'Mit Google anmelden')),
       model ? h('ul', { class: 'menu-links' }, h('li', {}, h('a', { class: 'tap', href: '#/data', onclick: e => { e.preventDefault(); actions.navigate('data'); } },
-        'Daten und Hinweise', issues.length ? h('span', { class: 'count' + (nErr ? ' has-errors' : '') }, nErr ? `${nErr} Fehler` : String(issues.length)) : null))) : null);
+        'Daten und Hinweise', issues.length ? h('span', { class: 'count' + (nErr ? ' has-errors' : '') }, nErr ? `${nErr} Fehler` : String(issues.length)) : null)),
+        // Phase 19: the monthly wall newspaper (print view)
+        h('li', {}, h('a', { class: 'tap', href: '#/aushang', onclick: e => { e.preventDefault(); closeMenu(); actions.navigate('aushang'); } }, 'Aushang drucken'))) : null);
 
     // Über
     // Als App installieren (app/install.js): the browser's dialog, or the two steps on iOS

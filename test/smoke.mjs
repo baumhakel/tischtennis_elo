@@ -17,7 +17,7 @@ const KNOWN = [/accounts\.google\.com\/gsi\/client/, /favicon\.ico/];
 const IDS = new Set(VIEWS.map(v => v.id));
 // views that need a parameter are reached through the links found on the other pages
 const DIRECT = VIEWS.filter(v => v.menu !== false && !['player', 'h2h', 'more'].includes(v.id)).map(v => v.id)
-  .concat(['eintragen', 'melden', 'verwalten', 'turnier', 'qr-test']);   // Phase 18a: reached from the menu (Mitmachen) · Phase 18: the Turnier tab · 18c: QR-Test
+  .concat(['eintragen', 'melden', 'verwalten', 'turnier', 'qr-test', 'aushang']);   // Phase 18a: reached from the menu (Mitmachen) · Phase 18: the Turnier tab · 18c: QR-Test
 
 const problems = [];
 const browser = await launch();

@@ -15,6 +15,7 @@ import { viewHead, linkTo } from './common.js';
 import { pickTournament } from '../app/tournaments.js';
 import { seedSlots, roundName, LETTERS } from '../core/tournament.js';
 import { sideName, MODE_TEXT, tournamentQr } from './tournament-ui.js';
+import { mountPoster } from './poster.js';
 
 const MARGIN = 6, OVERLAP = 8, PAD = 8, SEAM_GAP = 6;
 const SHEET = { hoch: [297, 420], quer: [420, 297] };
@@ -59,6 +60,7 @@ export default {
   id: 'aushang',
   title: 'Aushang',
   mount(el, ctx) {
+    if (ctx.params.turnier == null) return mountPoster(el, ctx);   // Phase 19: #/aushang?monat= is the monthly poster
     let key = null;
     const update = c => {
       const k = [c.params.turnier, c.baseModel.dataset.hash, state.orient].join('|');

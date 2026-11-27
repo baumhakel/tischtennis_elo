@@ -67,6 +67,9 @@ function page(ctx) {
       h('span', { class: 'run-sub' }, `${rm.leader ? `Gerade auf Platz 1: ${nameOf(ctx, rm.leader)}. ` : ''}Entschieden wird am Monatsende.`)) : null,
     months.length ? [
       plainTable(['Monat', 'Aufsteiger', 'Platz 1 am Ende'], monthRows().slice(0, SHOW), [], monthLinks().slice(0, SHOW)),
+      // Phase 19: the month as the wall newspaper
+      h('p', { class: 'small' }, 'Als Aushang drucken: ', months.slice(0, 3).map((m, i) => [i ? ' · ' : '',
+        h('a', { class: 'inline-link', ...linkTo(ctx, 'aushang', { monat: day(m.from).slice(0, 7) }) }, mLabel(m.from))])),
       months.length > SHOW ? tableView(`Alle ${months.length} Monate`, ['Monat', 'Aufsteiger', 'Platz 1 am Ende'], monthRows(), [], monthLinks()) : null,
     ] : h('p', { class: 'empty' }, 'Noch ist kein Monat mit einem Sieger vorbei.'),
     h('h3', { class: 'sec' }, 'Aufsteiger der Woche'),

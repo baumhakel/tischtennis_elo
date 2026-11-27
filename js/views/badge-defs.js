@@ -3,12 +3,14 @@
 import * as fmt from '../ui/format.js';
 import { BADGES } from '../core/achievements.js';
 
-export const CATEGORIES = ['Meilensteine', 'Serien', 'Riesentöter', 'Rang und Elo', 'Duelle', 'Doppel', 'Zeit', 'Kurios'];
+export const CATEGORIES = ['Meilensteine', 'Serien', 'Riesentöter', 'Rang und Elo', 'Duelle', 'Doppel', 'Turnier', 'Zeit', 'Fotos', 'Kurios'];
 export const SCOPE = {
   beide: 'Einzel und Doppel',
   einzel: 'nur Einzel',
   doppel: 'nur Doppel',
   formular: 'Einzel und Doppel, nur Formulareinträge',
+  turnier: 'Turniere (Einzel und Doppel, auch gegen Gäste), nie kampflos',
+  fotos: 'Fotos in der App',
 };
 
 const pl = (n, one, many) => `${fmt.int(n)} ${n === 1 ? one : many}`;
@@ -106,6 +108,32 @@ export const DEFS = {
     cond: c => `genau so viele Siege wie Niederlagen, nach mindestens ${c.achievement_balance_min_games} Spielen` },
   jubilee:      { name: 'Jubiläum', cat: 'Kurios', scope: 'beide', motif: 'trophy',
     cond: c => `das ${c.achievement_jubilee_games}. Spiel gewonnen`, unit: (v, x, c) => (v < c.achievement_jubilee_games ? `${fmt.int(v)} von ${c.achievement_jubilee_games} Spielen` : 'verpasst') },
+  // Phase 19b: tournaments and sets (only tournament matches have sets), photos
+  tour_played:  { name: 'Turnierspieler', cat: 'Turnier', scope: 'turnier', motif: 'swords',
+    cond: (c, L) => `bei ${pl(L, 'Turnier', 'Turnieren')} mitgespielt`, unit: v => pl(v, 'Turnier', 'Turniere'),
+    note: 'Zählt mit dem ersten wirklich gespielten Turnierspiel. Testturniere zählen nicht.' },
+  tour_ko:      { name: 'K.-o.-Runde', cat: 'Turnier', scope: 'turnier', motif: 'mountain',
+    cond: () => 'in einem Turnier die K.-o.-Runde erreicht', note: 'Zählt mit dem ersten eingetragenen K.-o.-Spiel.' },
+  tour_podium:  { name: 'Turnierpodest', cat: 'Turnier', scope: 'turnier', motif: 'podium',
+    cond: () => 'in einem Turnier unter die besten drei gekommen', note: 'Zählt, sobald Finale und Spiel um Platz 3 entschieden sind.' },
+  tour_win:     { name: 'Turniersieg', cat: 'Turnier', scope: 'turnier', motif: 'trophy',
+    cond: (c, L) => `${pl(L, 'Turnier', 'Turniere')} gewonnen`, unit: v => pl(v, 'Turniersieg', 'Turniersiege'),
+    note: 'Im Doppel bekommen beide aus dem Siegerteam das Abzeichen.' },
+  set_zero:     { name: 'Zu null', cat: 'Turnier', scope: 'turnier', motif: 'zero',
+    cond: () => 'einen Satz zu null gewonnen (z. B. 11:0)', note: 'Sätze gibt es nur in Turnierspielen.' },
+  set_deuce:    { name: 'Nervenstark', cat: 'Turnier', scope: 'turnier', motif: 'heart',
+    cond: c => `einen Satz mit mindestens ${c.achievement_deuce_points ?? 15} Punkten gewonnen (lange Verlängerung)` },
+  set_comeback: { name: 'Aufholjagd', cat: 'Turnier', scope: 'turnier', motif: 'arrowup',
+    cond: () => 'ein Spiel (Best of 5 oder länger) nach 0:2 Sätzen noch gewonnen' },
+  set_clean:    { name: 'Weiße Weste', cat: 'Turnier', scope: 'turnier', motif: 'shield',
+    cond: () => 'ein Spiel (Best of 5 oder länger) ohne Satzverlust gewonnen' },
+  photo_upload: { name: 'Fotograf', cat: 'Fotos', scope: 'fotos', motif: 'camera',
+    cond: (c, L) => `${pl(L, 'Foto', 'Fotos')} hochgeladen`, unit: v => pl(v, 'Foto', 'Fotos'),
+    note: 'Zählt Fotos, die über ein Google-Konto hochgeladen wurden, das bei dir eingetragen ist.' },
+  photo_avatar: { name: 'Gesicht zeigen', cat: 'Fotos', scope: 'fotos', motif: 'camera', cond: () => 'ein eigenes Profilbild' },
+  photo_in:     { name: 'Im Bild', cat: 'Fotos', scope: 'fotos', motif: 'star',
+    cond: (c, L) => `${pl(L, 'Spiel', 'Spiele')} von dir mit Foto`, unit: v => pl(v, 'Spiel', 'Spiele') + ' mit Foto',
+    note: 'Spiele und Turnierspiele, zu denen jemand ein Foto hochgeladen hat.' },
 };
 
 export const ORDER = Object.keys(DEFS);

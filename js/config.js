@@ -204,6 +204,12 @@ export const CONFIG_DEFAULTS = {
   achievement_lucky_numbers:     { type: 'list',    value: [1444, 1555, 1666], min: 0 },
   achievement_balance_min_games: { type: 'integer', value: 50,   min: 2 },
   achievement_jubilee_games:     { type: 'integer', value: 100,  min: 1 },
+  // Phase 19b: tournaments, sets, photos
+  achievement_tournament_levels:     { type: 'list',    value: [1, 3, 10], min: 1 },
+  achievement_tournament_win_levels: { type: 'list',    value: [1, 3, 5], min: 1 },
+  achievement_deuce_points:          { type: 'integer', value: 15, min: 12 },
+  achievement_photo_levels:          { type: 'list',    value: [1, 10, 50], min: 1 },
+  achievement_photo_games_levels:    { type: 'list',    value: [1, 5, 20], min: 1 },
   session_gap_minutes:           { type: 'integer', value: 20,   min: 1 },   // Abzeichen (Marathon), later the Labor
   // Phase 15: Jahresrückblick season (teaser on the Übersicht); from > until wraps the new year
   year_review_from:              { type: 'monthday', value: [12, 1] },

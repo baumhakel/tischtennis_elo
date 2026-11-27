@@ -61,6 +61,18 @@ export const BADGES = {
   lucky:       { single: true },
   even:        { single: true },
   jubilee:     { single: true },
+  // Phase 19b (27 Nov 2026): tournaments, sets (tournament matches only, never w. o.), photos
+  tour_played: { levels: 'achievement_tournament_levels' },
+  tour_win:    { levels: 'achievement_tournament_win_levels' },
+  tour_podium: { single: true },
+  tour_ko:     { single: true },
+  set_zero:    { single: true },
+  set_deuce:   { single: true },
+  set_comeback:{ single: true },
+  set_clean:   { single: true },
+  photo_upload:{ levels: 'achievement_photo_levels' },
+  photo_avatar:{ single: true },
+  photo_in:    { levels: 'achievement_photo_games_levels' },
 };
 
 import { serialToParts, serialFromParts } from './normalize.js';
@@ -467,6 +479,8 @@ export function computeAchievements(pooled, modes = {}, now = Infinity) {
     };
   };
 
+  extraBadges(dataset, elo, { award, awardValue });   // like the game badges: every result there is
+
   const players = new Map();
   elo.ids.forEach((id, k) => {
     earned[k].sort((a, b) => a.t - b.t || (a.g ?? 0) - (b.g ?? 0));
@@ -478,4 +492,96 @@ export function computeAchievements(pooled, modes = {}, now = Infinity) {
     weekly: weekly.reverse(), running, monthly: monthly.reverse(), runningMonth,
     reigns: reigns.map(r => ({ id: elo.ids[r.k], from: r.from, to: r.to, days: r.days, current: !!r.current })).reverse(),
   };
+}
+
+/**
+ * Tournament, set and photo badges (Phase 19b). Not tied to one Elo game (g = null), so they are awarded at the
+ * moment they happen: a tournament placing with the result that decided it, a set badge with the match result,
+ * a photo badge at the upload. Only tournaments with status aktiv or beendet (never test), only members (players
+ * with an Elo game), and never a „w. o.“: it is not a played match.
+ */
+export function extraBadges(dataset, elo, { award, awardValue }) {
+  const cfg = dataset.config;
+  const kOf = id => (id != null && elo.index.has(id) ? elo.index.get(id) : null);
+  const idsOf = side => (side?.members ? side.members.filter(m => m.id).map(m => m.id) : side?.id ? [side.id] : []);
+  const tours = (dataset.tournaments || []).filter(T => T.ok && (T.status === 'aktiv' || T.status === 'beendet'))
+    .sort((a, b) => (a.date ?? 0) - (b.date ?? 0));
+  const count = new Map();                                  // k → tournaments played, k → tournaments won
+  const wins = new Map();
+  const deuce = cfg.achievement_deuce_points ?? 15;
+  for (const T of tours) {
+    const played = T.matches.filter(m => m.result && !m.result.wo).sort((a, b) => a.result.t - b.result.t);
+    // played in the tournament: with the first match really played
+    const first = new Map();
+    for (const m of played) for (const s of [m.a, m.b]) for (const id of idsOf(s)) if (!first.has(id)) first.set(id, m.result.t);
+    for (const [id, t] of first) {
+      const k = kOf(id); if (k == null) continue;
+      const c = (count.get(k) || 0) + 1; count.set(k, c);
+      awardValue(k, 'tour_played', c, t, null);
+    }
+    // reached the knockout: the first knockout match with a result (played or w. o.) that involves you
+    for (const m of T.matches.filter(x => x.stage === 'ko' && x.result).sort((a, b) => a.result.t - b.result.t)) {
+      for (const s of [m.a, m.b]) for (const id of idsOf(s)) { const k = kOf(id); if (k != null) award(k, 'tour_ko', 1, m.result.t); }
+    }
+    // podium and win: when the tournament has its places (the last result that decided them)
+    if (T.winner) {
+      const decisive = T.matches.filter(m => (m.label === 'Finale' || m.third) && m.result).map(m => m.result.t);
+      const t = decisive.length ? Math.max(...decisive) : Math.max(...T.matches.filter(m => m.result).map(m => m.result.t));
+      {
+        const side = key => T.participants.find(p => p.key === key);
+        for (const key of [T.winner, T.second, ...T.third].filter(Boolean)) for (const id of idsOf(side(key))) {
+          const k = kOf(id); if (k != null) award(k, 'tour_podium', 1, t);
+        }
+        for (const id of idsOf(side(T.winner))) {
+          const k = kOf(id); if (k == null) continue;
+          const c = (wins.get(k) || 0) + 1; wins.set(k, c);
+          awardValue(k, 'tour_win', c, t, null);
+        }
+      }
+    }
+    // sets, from each side's view
+    for (const m of played) {
+      const r = m.result;
+      for (const [s, own] of [[m.a, 0], [m.b, 1]]) {
+        const sets = r.sets.map(x => (own ? [x[1], x[0]] : x));
+        const won = r.winner === (own ? 'b' : 'a');
+        const ks = idsOf(s).map(kOf).filter(k => k != null);
+        if (!ks.length) continue;
+        const has = {
+          set_zero: sets.some(([x, y]) => x > y && y === 0),
+          set_deuce: sets.some(([x, y]) => x > y && x >= deuce),
+          set_comeback: won && m.bestOf >= 5 && sets.length >= 3 && sets[0][0] < sets[0][1] && sets[1][0] < sets[1][1],
+          set_clean: won && m.bestOf >= 5 && sets.every(([x, y]) => x > y),
+        };
+        for (const k of ks) for (const [b, ok] of Object.entries(has)) if (ok) award(k, b, 1, r.t);
+      }
+    }
+  }
+  // photos: uploads by the player's own accounts, the own profile picture, games of yours with a photo
+  const P = dataset.photos;
+  if (!P?.list?.length) return;
+  const byEmail = new Map();
+  for (const p of dataset.players.values()) for (const a of p.accounts || []) byEmail.set(a, p.id);
+  const byRef = new Map(dataset.games.map(g => [g.ref, g]));
+  const tourById = new Map(tours.map(T => [T.id, T]));
+  const up = new Map(), seen = new Map();
+  for (const ph of P.list.slice().sort((a, b) => a.at - b.at)) {
+    const k = kOf(byEmail.get(ph.by));
+    if (k != null) { const c = (up.get(k) || 0) + 1; up.set(k, c); awardValue(k, 'photo_upload', c, ph.at, null); }
+    if (ph.kind === 'spieler') { const kk = kOf(ph.ref); if (kk != null) award(kk, 'photo_avatar', 1, ph.at); continue; }
+    // whose game is in the picture (each game counts once per player)
+    let ids = [];
+    if (ph.kind === 'spiel') { const g = byRef.get(ph.ref); if (g) ids = [...g.winners, ...g.losers]; }
+    else if (ph.kind === 'turnier_spiel') {
+      const [tid, nr] = ph.ref.split('#'); const m = tourById.get(tid)?.matches.find(x => x.nr === Number(nr));
+      if (m) ids = [...idsOf(m.a), ...idsOf(m.b)];
+    }
+    for (const id of ids) {
+      const kk = kOf(id); if (kk == null) continue;
+      const set = seen.get(kk) || seen.set(kk, new Set()).get(kk);
+      if (set.has(ph.kind + ph.ref)) continue;
+      set.add(ph.kind + ph.ref);
+      awardValue(kk, 'photo_in', set.size, ph.at, null);
+    }
+  }
 }
